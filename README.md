@@ -1,5 +1,7 @@
 # ymux
 
+**English** | [한국어](./README.ko.md) | [日本語](./README.ja.md)
+
 A lightweight, tmux-inspired terminal multiplexer for Windows.
 
 Built with Tauri 2 (Rust) + WebView2 + xterm.js. Designed to stay small, fast, and
