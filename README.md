@@ -55,3 +55,12 @@ close.
 ## Status
 
 Early MVP. See `docs/` (TBD) for the roadmap.
+
+## Support
+
+If ymux is useful to you, consider buying me a coffee — it keeps the project
+moving.
+
+[![ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/youngminkim)
+
+<https://ko-fi.com/youngminkim>

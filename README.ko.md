@@ -54,3 +54,12 @@ Linux/macOS 에서 플랫폼 독립적인 로직을 작업할 수 있습니다. 
 ## 상태
 
 초기 MVP. 로드맵은 `docs/` (예정) 를 참고하세요.
+
+## 후원
+
+ymux가 도움이 되셨다면 커피 한 잔 사주시면 감사하겠습니다. 프로젝트 유지에
+큰 힘이 됩니다.
+
+[![ko-fi](https://img.shields.io/badge/Ko--fi-후원하기-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/youngminkim)
+
+<https://ko-fi.com/youngminkim>
