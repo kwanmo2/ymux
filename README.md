@@ -1,6 +1,12 @@
-# ymux
+<h1 align="center">ymux</h1>
 
-**English** | [한국어](./README.ko.md) | [日本語](./README.ja.md)
+<p align="center">
+  <strong>English</strong> &nbsp;·&nbsp; <a href="./README.ko.md">한국어</a> &nbsp;·&nbsp; <a href="./README.ja.md">日本語</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.2.0-7fdbca?style=flat-square" alt="version 0.2.0" />
+</p>
 
 <p align="center">
   <a href="https://ko-fi.com/youngminkim">
