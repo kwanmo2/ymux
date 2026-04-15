@@ -1,15 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod commands;
-
 use tauri::{Manager, RunEvent};
+use ymux_lib::commands::{start_pty_event_pump, AppState};
 use ymux_lib::config::ConfigStore;
 use ymux_lib::pty::PtyManager;
-
-use crate::commands::{
-    detect_shells_cmd, kill_pane, load_bootstrap, resize_pane, save_config, set_active_workspace,
-    spawn_pane, start_pty_event_pump, write_pane, AppState,
-};
 
 fn main() {
     tracing_subscriber::fmt()
@@ -33,17 +27,21 @@ fn main() {
         pty: PtyManager::default(),
     };
 
+    // `generate_handler!` requires the absolute path to each command so the
+    // helper macros it expands into (`__cmd__<name>`) resolve through the
+    // `ymux_lib::commands` module they were defined in. Importing the names
+    // via `use` is not enough — macros are not re-exported by `use`.
     tauri::Builder::default()
         .manage(state)
         .invoke_handler(tauri::generate_handler![
-            load_bootstrap,
-            detect_shells_cmd,
-            save_config,
-            spawn_pane,
-            write_pane,
-            resize_pane,
-            kill_pane,
-            set_active_workspace,
+            ymux_lib::commands::load_bootstrap,
+            ymux_lib::commands::detect_shells_cmd,
+            ymux_lib::commands::save_config,
+            ymux_lib::commands::spawn_pane,
+            ymux_lib::commands::write_pane,
+            ymux_lib::commands::resize_pane,
+            ymux_lib::commands::kill_pane,
+            ymux_lib::commands::set_active_workspace,
         ])
         .setup(|app| {
             start_pty_event_pump(app.handle().clone());
