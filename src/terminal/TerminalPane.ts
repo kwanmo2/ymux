@@ -117,8 +117,25 @@ export class TerminalPane {
 
   async spawn(): Promise<void> {
     if (this.spawned) return;
-    // Defer fit until we are actually in the DOM with a nonzero size.
-    this.scheduleFit();
+    // Fit *synchronously* before reading dims so the PTY is spawned with the
+    // actual rendered size instead of xterm.js's default 80×24. `scheduleFit`
+    // (which queues a RAF) would race against `currentDims()` below and
+    // produce 80×24, forcing a resize shortly after spawn — harmless for
+    // plain cmd, but lethal for TUI apps like Claude Code that use
+    // cursor-based in-place redraws: they compute their internal model at
+    // 80 cols and xterm then renders at the actual width, and the two go
+    // out of sync causing visible text overlap when the menu redraws.
+    //
+    // The `.pane` element is already attached to the DOM (WorkspaceManager
+    // calls `renderWorkspace` before `spawn`), so `fit()` can compute real
+    // dimensions from layout. If fit still throws (zero-size parent), fall
+    // through to the defaults — the subsequent resize observer will correct
+    // it, and plain shells won't care.
+    try {
+      this.fit.fit();
+    } catch {
+      // element not yet measurable; ignore
+    }
     const { cols, rows } = this.currentDims();
     try {
       await api.spawnPane({
