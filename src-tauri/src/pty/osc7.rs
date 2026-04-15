@@ -160,25 +160,36 @@ fn url_decode(s: &str) -> Option<String> {
     String::from_utf8(out).ok()
 }
 
-/// Strip the leading `/` from `/C:/path` style Windows paths and convert
-/// forward slashes back to backslashes. On non-Windows hosts this is a
-/// no-op so unit tests running on Linux observe forward-slash paths.
+/// Strip the leading `/` from `/C:/path` style Windows file URIs, convert
+/// MSYS-style `/c/path` paths emitted by Git Bash into `C:\path`, and
+/// normalise separators. On non-Windows hosts this is a no-op so unit
+/// tests running on Linux observe forward-slash paths verbatim.
 fn normalize_windows(path: &str) -> String {
     #[cfg(windows)]
     {
-        let stripped = if path.len() >= 3
-            && path.starts_with('/')
-            && path.as_bytes()[1].is_ascii_alphabetic()
-            && path.as_bytes()[2] == b':'
+        let bytes = path.as_bytes();
+        // `/C:/foo` (standard file:/// form) → `C:/foo`
+        if bytes.len() >= 3
+            && bytes[0] == b'/'
+            && bytes[1].is_ascii_alphabetic()
+            && bytes[2] == b':'
         {
-            &path[1..]
-        } else {
-            path
-        };
-        stripped.replace('/', "\\")
+            return path[1..].replace('/', "\\");
+        }
+        // `/c/foo` (Git Bash / MSYS form) → `C:\foo`
+        if bytes.len() >= 3
+            && bytes[0] == b'/'
+            && bytes[1].is_ascii_alphabetic()
+            && bytes[2] == b'/'
+        {
+            let drive = (bytes[1] as char).to_ascii_uppercase();
+            return format!("{drive}:{}", path[2..].replace('/', "\\"));
+        }
+        path.replace('/', "\\")
     }
     #[cfg(not(windows))]
     {
+        let _ = path; // suppress unused warning is not needed — `path` is used
         path.to_string()
     }
 }

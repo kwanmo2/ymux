@@ -11,10 +11,12 @@ use uuid::Uuid;
 ///
 /// History:
 ///   1 — initial schema.
-///   2 — shell profile args now embed the OSC 7 cwd init. Any v1 config
-///       has stale cached `shells` entries without the init, so `migrate`
-///       clears them and forces re-detection on next load.
-pub const CONFIG_VERSION: u32 = 2;
+///   2 — shell profile args embed the OSC 7 cwd init for PowerShell.
+///   3 — cmd.exe switched from `%CD:\=/%` (parse-time) to `$P` (render-time)
+///       for dynamic cwd, and Git Bash gained a `--rcfile`-based init that
+///       installs a `PROMPT_COMMAND` OSC 7 hook. Any cached shell profile
+///       from v1 or v2 is dropped on load so the next bootstrap re-detects.
+pub const CONFIG_VERSION: u32 = 3;
 
 /// Maximum number of workspaces the UI exposes through `Ctrl+1..9`.
 pub const MAX_WORKSPACES: u32 = 9;
@@ -107,9 +109,10 @@ impl Config {
     /// the current [`CONFIG_VERSION`]. Called from `ConfigStore::load`.
     pub fn migrate(&mut self) {
         if self.version < CONFIG_VERSION {
-            // v1 → v2: cached shell profiles predate the OSC 7 init args,
-            // so they would still spawn shells without cwd reporting. Drop
-            // the cache and let the next bootstrap re-detect.
+            // Every historical schema bump so far has meant the cached
+            // shell profile args were incompatible with the latest detector
+            // output. Dropping the cache forces re-detection on the next
+            // bootstrap, which is cheap and always correct.
             self.shells.clear();
             self.version = CONFIG_VERSION;
         }

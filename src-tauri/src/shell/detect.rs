@@ -57,9 +57,62 @@ mod windows_detect {
     /// sees the init script itself.
     const PWSH_OSC7_INIT: &str = "function global:prompt { $p = ($PWD.Path -replace '\\\\','/'); $esc = [char]27; \"$esc]7;file:///$p$esc\\PS $($PWD.Path)> \" }";
 
-    /// cmd.exe `PROMPT` that embeds OSC 7. `$e` is ESC, `%CD:\=/%` is cmd's
-    /// in-place backslash→slash substitution for the current directory.
-    const CMD_OSC7_PROMPT: &str = "prompt $e]7;file:///%CD:\\=/%$e\\$P$G";
+    /// cmd.exe `PROMPT` that embeds OSC 7. `$e` is ESC and `$P` is the
+    /// current drive + path — crucially, `$P` is re-evaluated *every time*
+    /// the prompt is rendered, unlike `%CD%` which would be expanded once
+    /// at PROMPT-setup time and then freeze on whatever directory the
+    /// shell launched in.
+    const CMD_OSC7_PROMPT: &str = "prompt $e]7;file:///$P$e\\$P$G";
+
+    /// Bash (Git Bash / MSYS) init snippet. Written to a temp rcfile and
+    /// passed via `--rcfile` on spawn. It first sources the user's normal
+    /// init files so aliases / PS1 / env vars still take effect, then
+    /// installs a `PROMPT_COMMAND` hook that emits OSC 7 with the current
+    /// directory. Bash's `$PWD` in Git Bash is in MSYS form (`/c/Users/...`)
+    /// so we convert it back to `C:/Users/...` before emitting, which keeps
+    /// the URL a real `file://` URI the ymux parser understands.
+    const BASH_OSC7_RCFILE: &str = r#"# ymux OSC 7 cwd reporter — auto-generated, safe to delete.
+if [ -f "$HOME/.bash_profile" ]; then
+    . "$HOME/.bash_profile"
+elif [ -f "$HOME/.profile" ]; then
+    . "$HOME/.profile"
+fi
+if [ -f "$HOME/.bashrc" ]; then
+    . "$HOME/.bashrc"
+fi
+_ymux_osc7() {
+    local p="$PWD"
+    case "$p" in
+        /[a-zA-Z]/*)
+            local d="${p:1:1}"
+            d=$(printf '%s' "$d" | tr '[:lower:]' '[:upper:]')
+            p="${d}:${p:2}"
+            ;;
+    esac
+    printf '\033]7;file://%s%s\033\\' "${HOSTNAME:-localhost}" "$p"
+}
+case ";${PROMPT_COMMAND:-};" in
+    *";_ymux_osc7;"*) ;;
+    *) PROMPT_COMMAND="_ymux_osc7;${PROMPT_COMMAND:-}" ;;
+esac
+"#;
+
+    /// Write (or refresh) the bash rcfile next to the main config and return
+    /// its absolute path. Errors are logged and swallowed — Git Bash just
+    /// won't have cwd tracking in that case.
+    fn ensure_bash_rcfile() -> Option<PathBuf> {
+        let dir = dirs::config_dir()?.join("ymux");
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            tracing::warn!(error = %e, "failed to create ymux config dir for bash rcfile");
+            return None;
+        }
+        let path = dir.join("bash-init.sh");
+        if let Err(e) = std::fs::write(&path, BASH_OSC7_RCFILE) {
+            tracing::warn!(error = %e, "failed to write bash rcfile");
+            return None;
+        }
+        Some(path)
+    }
 
     pub fn run() -> Vec<ShellProfile> {
         let mut out = Vec::new();
@@ -111,10 +164,20 @@ mod windows_detect {
 
         // 4. Git Bash.
         if let Some(p) = find_git_bash() {
+            // Use a generated rcfile for OSC 7 cwd reporting when we can
+            // write one; fall back to plain `--login -i` otherwise.
+            let args = if let Some(rcfile) = ensure_bash_rcfile() {
+                // Forward-slash form of the path plays best with MSYS
+                // bash's argument parsing.
+                let rc = rcfile.to_string_lossy().replace('\\', "/");
+                vec!["--rcfile".into(), rc, "-i".into()]
+            } else {
+                vec!["--login".into(), "-i".into()]
+            };
             out.push(ShellProfile {
                 name: "Git Bash".into(),
                 executable: p.to_string_lossy().into_owned(),
-                args: vec!["--login".into(), "-i".into()],
+                args,
                 icon: Some("gitbash".into()),
                 color: Some("#4e4e4e".into()),
             });
