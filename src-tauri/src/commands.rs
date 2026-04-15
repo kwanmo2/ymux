@@ -57,16 +57,22 @@ pub struct BootstrapPayload {
 
 #[tauri::command]
 pub fn load_bootstrap(state: State<'_, AppState>) -> YmuxResult<BootstrapPayload> {
+    // Make sure the cached shell list in `state.config` is populated *before*
+    // we snapshot it, so the snapshot the frontend receives carries the
+    // shells. Otherwise the frontend's `this.config.shells` would stay empty
+    // and the next debounced `save_config` would round-trip an empty list
+    // back to the backend, wiping the cache and breaking the next
+    // `spawn_pane` call.
+    {
+        let snap = state.config.snapshot();
+        if snap.shells.is_empty() {
+            let detected = shell::detect_shells();
+            state.config.update(|c| c.shells = detected);
+            let _ = state.config.flush_if_dirty();
+        }
+    }
     let config = state.config.snapshot();
-    // Prefer cached shells; if empty, detect and persist.
-    let shells = if config.shells.is_empty() {
-        let detected = shell::detect_shells();
-        state.config.update(|c| c.shells = detected.clone());
-        let _ = state.config.flush_if_dirty();
-        detected
-    } else {
-        config.shells.clone()
-    };
+    let shells = config.shells.clone();
     Ok(BootstrapPayload {
         config,
         shells,
@@ -84,7 +90,13 @@ pub fn detect_shells_cmd(state: State<'_, AppState>) -> YmuxResult<Vec<ShellProf
 
 #[tauri::command]
 pub fn save_config(state: State<'_, AppState>, config: Config) -> YmuxResult<()> {
-    state.config.replace(config);
+    // Treat the frontend as the source of truth for layouts and the active
+    // workspace, but keep `shells` as a backend-owned detection cache. If the
+    // frontend ships a non-empty shell list we accept it (e.g. after a
+    // re-detect); otherwise we preserve whatever is already cached so a stale
+    // frontend snapshot can't blow away the list and break subsequent
+    // `spawn_pane` calls.
+    state.config.update(|c| c.merge_layouts_from(config));
     state.config.flush()?;
     Ok(())
 }

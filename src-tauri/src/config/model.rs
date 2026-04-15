@@ -68,6 +68,20 @@ impl Config {
     pub fn shell(&self, name: &str) -> Option<&ShellProfile> {
         self.shells.iter().find(|s| s.name == name)
     }
+
+    /// Apply layout / workspace updates from `incoming` onto `self`, treating
+    /// `shells` as a backend-owned detection cache: it is only overwritten
+    /// when the incoming config carries a non-empty list. This stops a stale
+    /// frontend snapshot (e.g. one captured before shell detection finished)
+    /// from clobbering the cache and breaking subsequent `spawn_pane` calls.
+    pub fn merge_layouts_from(&mut self, incoming: Config) {
+        self.version = incoming.version;
+        self.active_workspace = incoming.active_workspace;
+        self.workspaces = incoming.workspaces;
+        if !incoming.shells.is_empty() {
+            self.shells = incoming.shells;
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -435,5 +449,78 @@ mod tests {
     #[test]
     fn max_workspaces_is_nine() {
         assert_eq!(MAX_WORKSPACES, 9);
+    }
+
+    #[test]
+    fn merge_layouts_preserves_shells_when_incoming_is_empty() {
+        // Regression: a stale frontend snapshot saved with `shells: []` used
+        // to wipe the backend's detected shell cache, breaking the next
+        // spawn_pane call with "unknown shell profile".
+        let mut backend = Config {
+            version: CONFIG_VERSION,
+            active_workspace: 1,
+            shells: vec![ShellProfile {
+                name: "Windows PowerShell".into(),
+                executable: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe".into(),
+                args: vec!["-NoLogo".into()],
+                icon: None,
+                color: None,
+            }],
+            workspaces: vec![Workspace::empty(1, "main")],
+        };
+        let frontend_save = Config {
+            version: CONFIG_VERSION,
+            active_workspace: 2,
+            shells: vec![],
+            workspaces: vec![Workspace::empty(2, "two")],
+        };
+        backend.merge_layouts_from(frontend_save);
+        assert_eq!(backend.active_workspace, 2);
+        assert_eq!(backend.workspaces.len(), 1);
+        assert_eq!(backend.workspaces[0].id, 2);
+        // Crucial: shells survived.
+        assert_eq!(backend.shells.len(), 1);
+        assert_eq!(backend.shells[0].name, "Windows PowerShell");
+    }
+
+    #[test]
+    fn merge_layouts_replaces_shells_when_incoming_is_nonempty() {
+        let mut backend = Config {
+            version: CONFIG_VERSION,
+            active_workspace: 1,
+            shells: vec![ShellProfile {
+                name: "old".into(),
+                executable: "/old".into(),
+                args: vec![],
+                icon: None,
+                color: None,
+            }],
+            workspaces: vec![Workspace::empty(1, "main")],
+        };
+        let frontend_save = Config {
+            version: CONFIG_VERSION,
+            active_workspace: 1,
+            shells: vec![
+                ShellProfile {
+                    name: "new-a".into(),
+                    executable: "/a".into(),
+                    args: vec![],
+                    icon: None,
+                    color: None,
+                },
+                ShellProfile {
+                    name: "new-b".into(),
+                    executable: "/b".into(),
+                    args: vec![],
+                    icon: None,
+                    color: None,
+                },
+            ],
+            workspaces: vec![Workspace::empty(1, "main")],
+        };
+        backend.merge_layouts_from(frontend_save);
+        assert_eq!(backend.shells.len(), 2);
+        assert_eq!(backend.shells[0].name, "new-a");
+        assert_eq!(backend.shells[1].name, "new-b");
     }
 }

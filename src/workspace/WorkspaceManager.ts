@@ -203,7 +203,12 @@ export class WorkspaceManager {
     const focusId = this.focusedPaneId ?? panes(ws.root)[0]?.id;
     if (!focusId) return;
     const existing = findPane(ws.root, focusId);
-    const shellName = this.resolveShell(existing?.shell ?? this.shells[0]?.name ?? "");
+    // Use the picker's currently selected default shell (it lives at
+    // `this.shells[0]` after `setDefaultShell`), not the focused pane's
+    // shell. Users expect "I picked Git Bash, then split → new pane is Git
+    // Bash", which inheritance from the parent silently breaks once you've
+    // changed the picker.
+    const shellName = this.resolveShell(this.shells[0]?.name ?? "");
     const spec = newPane(shellName, existing?.cwd ?? null);
     ws.root = splitPane(ws.root, focusId, direction, spec);
 
