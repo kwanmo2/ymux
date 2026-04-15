@@ -96,7 +96,16 @@ pub fn save_config(state: State<'_, AppState>, config: Config) -> YmuxResult<()>
     // re-detect); otherwise we preserve whatever is already cached so a stale
     // frontend snapshot can't blow away the list and break subsequent
     // `spawn_pane` calls.
-    state.config.update(|c| c.merge_layouts_from(config));
+    //
+    // Before persisting, patch each pane's `cwd` with whatever the per-pane
+    // OSC 7 reader last observed. This is how "reopen in the last working
+    // directory" works: as the user `cd`s around, the shell's prompt emits
+    // `ESC ] 7 ; file://.../current/dir ESC \`, the reader thread drops that
+    // into `PtyManager.cwds`, and we snapshot it here so the saved layout
+    // tree carries the live directory instead of the stale initial one.
+    let mut incoming = config;
+    incoming.patch_cwds(&state.pty.cwds_snapshot());
+    state.config.update(|c| c.merge_layouts_from(incoming));
     state.config.flush()?;
     Ok(())
 }

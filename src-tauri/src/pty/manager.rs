@@ -7,6 +7,7 @@
 
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
 
 use parking_lot::Mutex;
 use portable_pty::PtySize;
@@ -14,7 +15,7 @@ use uuid::Uuid;
 
 use crate::config::model::{PaneSpec, ShellProfile};
 use crate::error::{YmuxError, YmuxResult};
-use crate::pty::session::{PaneEvent, PtySession};
+use crate::pty::session::{CwdMap, PaneEvent, PtySession};
 
 /// Metadata returned to the frontend after a successful spawn.
 #[derive(Debug, Clone, serde::Serialize)]
@@ -28,6 +29,10 @@ pub struct PtyManager {
     tx: Sender<PaneEvent>,
     // Held so it doesn't drop; consumers take it with `take_event_receiver`.
     rx: Mutex<Option<Receiver<PaneEvent>>>,
+    // Shared `pane id → latest cwd` map. Reader threads push updates into it
+    // as they parse OSC 7 sequences, and `save_config` reads from it to
+    // patch the persisted layout with live working directories.
+    cwds: CwdMap,
 }
 
 impl Default for PtyManager {
@@ -37,6 +42,7 @@ impl Default for PtyManager {
             sessions: Mutex::new(HashMap::new()),
             tx,
             rx: Mutex::new(Some(rx)),
+            cwds: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -54,11 +60,23 @@ impl PtyManager {
         profile: &ShellProfile,
         size: PtySize,
     ) -> YmuxResult<SpawnedPane> {
-        let session = PtySession::spawn(spec, profile, size, self.tx.clone())?;
+        let session =
+            PtySession::spawn(spec, profile, size, self.tx.clone(), Arc::clone(&self.cwds))?;
         let id = session.id;
         let shell = profile.name.clone();
         self.sessions.lock().insert(id, session);
         Ok(SpawnedPane { id, shell })
+    }
+
+    /// Return the most recently reported working directory for `id`, if any.
+    pub fn cwd_for(&self, id: Uuid) -> Option<String> {
+        self.cwds.lock().get(&id).cloned()
+    }
+
+    /// Snapshot of the entire `pane id → cwd` map. Cheap clone used by
+    /// `save_config` to patch the layout tree in one pass.
+    pub fn cwds_snapshot(&self) -> HashMap<Uuid, String> {
+        self.cwds.lock().clone()
     }
 
     pub fn write(&self, id: Uuid, data: &[u8]) -> YmuxResult<()> {
@@ -77,6 +95,9 @@ impl PtyManager {
         // Remove under the lock so the Drop impl can run unguarded and join
         // the reader thread without deadlocking the manager.
         let session = self.sessions.lock().remove(&id);
+        // Drop the dead pane's cached cwd so a later pane reusing the same
+        // id doesn't inherit a stale directory.
+        self.cwds.lock().remove(&id);
         match session {
             Some(s) => s.kill(),
             None => Err(YmuxError::UnknownPane(id)),

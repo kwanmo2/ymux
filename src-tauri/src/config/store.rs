@@ -43,18 +43,21 @@ impl ConfigStore {
     /// silently clobber a user's config.
     pub fn load(path: impl Into<PathBuf>) -> YmuxResult<Self> {
         let path: PathBuf = path.into();
-        let config = if path.exists() {
+        let mut config = if path.exists() {
             let text = std::fs::read_to_string(&path)?;
             toml::from_str::<Config>(&text)?
         } else {
             Config::default()
         };
+        // Bring the in-memory config up to the current schema version so the
+        // rest of the app can assume current semantics. If `migrate` changes
+        // anything, mark dirty so the next flush writes it back.
+        let pre_migrate_version = config.version;
+        config.migrate();
+        let dirty = config.version != pre_migrate_version;
         Ok(Self {
             path,
-            inner: Mutex::new(Inner {
-                config,
-                dirty: false,
-            }),
+            inner: Mutex::new(Inner { config, dirty }),
         })
     }
 

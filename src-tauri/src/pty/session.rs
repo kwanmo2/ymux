@@ -4,9 +4,11 @@
 //! Windows and Unix openpty elsewhere. The same code compiles on both, which
 //! lets us run unit tests on Linux.
 
+use std::collections::HashMap;
 use std::io::Read;
 use std::io::Write as IoWrite;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 use parking_lot::Mutex;
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
@@ -14,6 +16,13 @@ use uuid::Uuid;
 
 use crate::config::model::{PaneSpec, ShellProfile};
 use crate::error::{YmuxError, YmuxResult};
+use crate::pty::osc7::Osc7Parser;
+
+/// Shared map of pane id → latest known current working directory. Populated
+/// by per-session reader threads as they parse OSC 7 sequences out of the
+/// PTY output stream; read by `save_config` to patch the layout tree before
+/// persisting it.
+pub type CwdMap = Arc<Mutex<HashMap<Uuid, String>>>;
 
 /// Handle to a single running PTY. `stdout` bytes from the child are pushed
 /// into a caller-provided `mpsc::Sender` on a dedicated reader thread — the
@@ -45,12 +54,15 @@ pub enum PaneEvent {
 
 impl PtySession {
     /// Spawn the shell described by `profile` under a fresh ConPTY and wire
-    /// its output into `events`.
+    /// its output into `events`. The reader thread also feeds bytes through
+    /// an OSC 7 parser and writes any detected working directory into
+    /// `cwds` under this pane's id.
     pub fn spawn(
         spec: &PaneSpec,
         profile: &ShellProfile,
         size: PtySize,
         events: Sender<PaneEvent>,
+        cwds: CwdMap,
     ) -> YmuxResult<Self> {
         let pty_system = native_pty_system();
         let pair = pty_system
@@ -85,17 +97,27 @@ impl PtySession {
 
         let id = spec.id;
         let tx = events.clone();
+        let cwds_for_reader = Arc::clone(&cwds);
         // Detached reader thread — we never join it. See the doc comment on
         // `PtySession` for why joining causes UI hangs on Windows.
         std::thread::Builder::new()
             .name(format!("ymux-pty-reader-{id}"))
             .spawn(move || {
                 let mut buf = [0u8; 8192];
+                let mut osc7 = Osc7Parser::new();
                 loop {
                     match reader.read(&mut buf) {
                         Ok(0) => break, // EOF
                         Ok(n) => {
-                            if tx.send(PaneEvent::Data(id, buf[..n].to_vec())).is_err() {
+                            let chunk = &buf[..n];
+                            // Parse any OSC 7 cwd reports hiding inside the
+                            // chunk and update the shared map. The last one
+                            // wins — that's the "current" cwd as far as the
+                            // shell is concerned.
+                            for cwd in osc7.feed(chunk) {
+                                cwds_for_reader.lock().insert(id, cwd);
+                            }
+                            if tx.send(PaneEvent::Data(id, chunk.to_vec())).is_err() {
                                 break;
                             }
                         }
@@ -187,6 +209,7 @@ mod tests {
         }
         let spec = PaneSpec::new_default();
         let (tx, rx) = mpsc::channel();
+        let cwds: CwdMap = Arc::new(Mutex::new(HashMap::new()));
         let session = PtySession::spawn(
             &spec,
             &profile,
@@ -197,6 +220,7 @@ mod tests {
                 pixel_height: 0,
             },
             tx,
+            Arc::clone(&cwds),
         )
         .expect("spawn");
         session

@@ -1,0 +1,283 @@
+//! Streaming parser for OSC 7 `ESC ] 7 ; file://host/path ST` sequences.
+//!
+//! OSC 7 is the de-facto "current working directory" escape sequence used by
+//! Windows Terminal, VS Code, WezTerm, iTerm2, and friends. When a shell
+//! prompt emits it, the surrounding terminal multiplexer can track the
+//! shell's live `cwd` without polling the process itself.
+//!
+//! This parser is deliberately minimal. It is a pure byte state machine so
+//! it can be fed arbitrarily chunked PTY output (including splits inside an
+//! escape sequence) without needing to buffer more than the in-flight OSC
+//! body. Any unrecognised OSC number or malformed sequence is silently
+//! dropped — the whole thing is a best-effort `cwd` hint, not an RPC
+//! channel.
+
+const MAX_BODY: usize = 4096;
+
+pub struct Osc7Parser {
+    state: State,
+    buf: Vec<u8>,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+enum State {
+    /// Scanning for the start of a new escape sequence.
+    Normal,
+    /// Saw `ESC` (0x1b).
+    Esc,
+    /// Saw `ESC ]` — in an OSC introducer, waiting for the Ps number.
+    OscIntroducer,
+    /// Saw `ESC ] 7` — need the `;` separator next.
+    Osc7Seen,
+    /// Saw `ESC ] 7 ;` — now accumulating the body (URI) until ST.
+    Osc7Body,
+    /// Saw `ESC ] 7 ; ... ESC` — need a `\\` next to complete ST.
+    Osc7BodyEsc,
+}
+
+impl Default for Osc7Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Osc7Parser {
+    pub fn new() -> Self {
+        Self {
+            state: State::Normal,
+            buf: Vec::with_capacity(256),
+        }
+    }
+
+    /// Feed a chunk of bytes from the PTY master. Returns every complete
+    /// OSC 7 `cwd` that was parsed in this chunk, decoded back into a
+    /// platform-native filesystem path.
+    pub fn feed(&mut self, bytes: &[u8]) -> Vec<String> {
+        let mut out = Vec::new();
+        for &b in bytes {
+            match self.state {
+                State::Normal => {
+                    if b == 0x1b {
+                        self.state = State::Esc;
+                    }
+                }
+                State::Esc => match b {
+                    b']' => self.state = State::OscIntroducer,
+                    0x1b => { /* stay in Esc */ }
+                    _ => self.state = State::Normal,
+                },
+                State::OscIntroducer => match b {
+                    b'7' => self.state = State::Osc7Seen,
+                    // Other OSC numbers (OSC 0 window title, etc.) — abandon,
+                    // since we only care about OSC 7.
+                    _ => self.state = State::Normal,
+                },
+                State::Osc7Seen => match b {
+                    b';' => {
+                        self.buf.clear();
+                        self.state = State::Osc7Body;
+                    }
+                    _ => self.state = State::Normal,
+                },
+                State::Osc7Body => match b {
+                    0x07 => {
+                        // BEL terminator
+                        if let Some(path) = decode(&self.buf) {
+                            out.push(path);
+                        }
+                        self.buf.clear();
+                        self.state = State::Normal;
+                    }
+                    0x1b => self.state = State::Osc7BodyEsc,
+                    _ => {
+                        if self.buf.len() < MAX_BODY {
+                            self.buf.push(b);
+                        } else {
+                            // Over-long body — give up on this sequence.
+                            self.buf.clear();
+                            self.state = State::Normal;
+                        }
+                    }
+                },
+                State::Osc7BodyEsc => match b {
+                    b'\\' => {
+                        // ST terminator (ESC \)
+                        if let Some(path) = decode(&self.buf) {
+                            out.push(path);
+                        }
+                        self.buf.clear();
+                        self.state = State::Normal;
+                    }
+                    _ => {
+                        // Wasn't ST after all; treat the ESC as part of the
+                        // body and reprocess the current byte as body.
+                        if self.buf.len() < MAX_BODY {
+                            self.buf.push(0x1b);
+                            self.buf.push(b);
+                        }
+                        self.state = State::Osc7Body;
+                    }
+                },
+            }
+        }
+        out
+    }
+}
+
+/// Decode an OSC 7 payload into a platform-native path. The payload is
+/// expected to be `file://<host>/<url-encoded-path>`. Any non-file URI or
+/// decode failure returns `None`.
+fn decode(buf: &[u8]) -> Option<String> {
+    let s = std::str::from_utf8(buf).ok()?;
+    let rest = s.strip_prefix("file://")?;
+    // The hostname runs up to the first `/`. Everything from the `/` onward
+    // is the URL-encoded path.
+    let slash = rest.find('/')?;
+    let encoded_path = &rest[slash..];
+    let decoded = url_decode(encoded_path)?;
+    Some(normalize_windows(&decoded))
+}
+
+/// Minimal percent-decoder. Accepts `%HH` escapes and decodes them to raw
+/// bytes; everything else passes through untouched. Returns `None` if the
+/// resulting bytes are not valid UTF-8.
+fn url_decode(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'%' && i + 2 < bytes.len() {
+            let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok()?;
+            let byte = u8::from_str_radix(hex, 16).ok()?;
+            out.push(byte);
+            i += 3;
+        } else {
+            out.push(b);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+/// Strip the leading `/` from `/C:/path` style Windows paths and convert
+/// forward slashes back to backslashes. On non-Windows hosts this is a
+/// no-op so unit tests running on Linux observe forward-slash paths.
+fn normalize_windows(path: &str) -> String {
+    #[cfg(windows)]
+    {
+        let stripped = if path.len() >= 3
+            && path.starts_with('/')
+            && path.as_bytes()[1].is_ascii_alphabetic()
+            && path.as_bytes()[2] == b':'
+        {
+            &path[1..]
+        } else {
+            path
+        };
+        stripped.replace('/', "\\")
+    }
+    #[cfg(not(windows))]
+    {
+        path.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_all(bytes: &[u8]) -> Vec<String> {
+        let mut p = Osc7Parser::new();
+        p.feed(bytes)
+    }
+
+    #[test]
+    fn parses_st_terminated_sequence() {
+        let input = b"\x1b]7;file://host/home/alice\x1b\\";
+        let out = parse_all(input);
+        assert_eq!(out, vec!["/home/alice".to_string()]);
+    }
+
+    #[test]
+    fn parses_bel_terminated_sequence() {
+        let input = b"\x1b]7;file://host/tmp\x07";
+        let out = parse_all(input);
+        assert_eq!(out, vec!["/tmp".to_string()]);
+    }
+
+    #[test]
+    fn ignores_other_osc_numbers() {
+        // OSC 0 (window title) should be ignored.
+        let input = b"\x1b]0;My Window\x07extra\x1b]7;file://h/foo\x07";
+        let out = parse_all(input);
+        assert_eq!(out, vec!["/foo".to_string()]);
+    }
+
+    #[test]
+    fn handles_chunked_input() {
+        let input = b"\x1b]7;file://host/home/alice\x1b\\";
+        let mut p = Osc7Parser::new();
+        let mut collected = Vec::new();
+        for chunk in input.chunks(3) {
+            collected.extend(p.feed(chunk));
+        }
+        assert_eq!(collected, vec!["/home/alice".to_string()]);
+    }
+
+    #[test]
+    fn decodes_percent_escapes() {
+        let input = b"\x1b]7;file://host/path%20with%20spaces\x07";
+        let out = parse_all(input);
+        assert_eq!(out, vec!["/path with spaces".to_string()]);
+    }
+
+    #[test]
+    fn extracts_latest_cwd_when_many_prompts() {
+        let input = b"hi\x1b]7;file://h/a\x07more\x1b]7;file://h/b\x07tail";
+        let out = parse_all(input);
+        assert_eq!(out, vec!["/a".to_string(), "/b".to_string()]);
+    }
+
+    #[test]
+    fn malformed_sequence_is_dropped() {
+        let input = b"\x1b]7;file://host/path-no-terminator...then garbage";
+        let out = parse_all(input);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn non_file_scheme_is_ignored() {
+        let input = b"\x1b]7;http://example.com/foo\x07";
+        let out = parse_all(input);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn accepts_empty_hostname() {
+        let input = b"\x1b]7;file:///usr/local\x07";
+        let out = parse_all(input);
+        assert_eq!(out, vec!["/usr/local".to_string()]);
+    }
+
+    #[test]
+    fn normal_text_does_not_trigger_sequences() {
+        let input = b"hello world\n";
+        let out = parse_all(input);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn long_body_is_bounded() {
+        let mut input = b"\x1b]7;file://host/".to_vec();
+        input.extend(std::iter::repeat(b'a').take(MAX_BODY + 100));
+        input.push(0x07);
+        // Should not crash, parser should reset and recover. We don't care
+        // whether a path was produced; the important thing is that feed
+        // returns and the parser is in a sensible state afterwards.
+        let mut p = Osc7Parser::new();
+        let _ = p.feed(&input);
+        let out = p.feed(b"\x1b]7;file://h/ok\x07");
+        assert_eq!(out, vec!["/ok".to_string()]);
+    }
+}

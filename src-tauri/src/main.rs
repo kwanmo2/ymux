@@ -52,6 +52,15 @@ fn main() {
         .run(|app_handle, event| {
             if let RunEvent::ExitRequested { .. } = event {
                 let state = app_handle.state::<AppState>();
+                // Snapshot the live OSC 7 `cwd` reports *before* shutting
+                // down the PTY sessions, then patch them into the config so
+                // the final on-disk layout carries whatever directory each
+                // shell was sitting in at exit time. This is what makes
+                // "reopen in the last working directory" work across app
+                // restarts without relying on the frontend's async
+                // `beforeunload` save racing the window close.
+                let cwds = state.pty.cwds_snapshot();
+                state.config.update(|c| c.patch_cwds(&cwds));
                 state.pty.shutdown_all();
                 if let Err(e) = state.config.flush() {
                     tracing::warn!(error = %e, "final config flush failed");

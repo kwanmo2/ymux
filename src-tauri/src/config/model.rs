@@ -8,7 +8,13 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Current on-disk schema version. Bump when a migration is needed.
-pub const CONFIG_VERSION: u32 = 1;
+///
+/// History:
+///   1 — initial schema.
+///   2 — shell profile args now embed the OSC 7 cwd init. Any v1 config
+///       has stale cached `shells` entries without the init, so `migrate`
+///       clears them and forces re-detection on next load.
+pub const CONFIG_VERSION: u32 = 2;
 
 /// Maximum number of workspaces the UI exposes through `Ctrl+1..9`.
 pub const MAX_WORKSPACES: u32 = 9;
@@ -80,6 +86,32 @@ impl Config {
         self.workspaces = incoming.workspaces;
         if !incoming.shells.is_empty() {
             self.shells = incoming.shells;
+        }
+    }
+
+    /// Overwrite each pane's `cwd` with the matching entry from `cwds`
+    /// (keyed on pane id) if present. Panes not present in the map are left
+    /// untouched, which means panes that never reported an OSC 7 cwd keep
+    /// whatever they had in config (usually their initial spawn directory).
+    pub fn patch_cwds(&mut self, cwds: &std::collections::HashMap<Uuid, String>) {
+        for ws in &mut self.workspaces {
+            ws.root.for_each_pane_mut(&mut |pane| {
+                if let Some(cwd) = cwds.get(&pane.id) {
+                    pane.cwd = Some(cwd.clone());
+                }
+            });
+        }
+    }
+
+    /// Apply any schema migrations needed to bring an on-disk config up to
+    /// the current [`CONFIG_VERSION`]. Called from `ConfigStore::load`.
+    pub fn migrate(&mut self) {
+        if self.version < CONFIG_VERSION {
+            // v1 → v2: cached shell profiles predate the OSC 7 init args,
+            // so they would still spawn shells without cwd reporting. Drop
+            // the cache and let the next bootstrap re-detect.
+            self.shells.clear();
+            self.version = CONFIG_VERSION;
         }
     }
 }
@@ -228,6 +260,22 @@ impl LayoutNode {
             LayoutNode::Split { a, b, .. } => a.find_pane_mut(id).or_else(|| b.find_pane_mut(id)),
             LayoutNode::Tabs { children, .. } => {
                 children.iter_mut().find_map(|c| c.find_pane_mut(id))
+            }
+        }
+    }
+
+    /// Apply `visit` to every pane in the subtree, depth-first.
+    pub fn for_each_pane_mut(&mut self, visit: &mut dyn FnMut(&mut PaneSpec)) {
+        match self {
+            LayoutNode::Pane(p) => visit(p),
+            LayoutNode::Split { a, b, .. } => {
+                a.for_each_pane_mut(visit);
+                b.for_each_pane_mut(visit);
+            }
+            LayoutNode::Tabs { children, .. } => {
+                for c in children {
+                    c.for_each_pane_mut(visit);
+                }
             }
         }
     }
@@ -481,6 +529,112 @@ mod tests {
         // Crucial: shells survived.
         assert_eq!(backend.shells.len(), 1);
         assert_eq!(backend.shells[0].name, "Windows PowerShell");
+    }
+
+    #[test]
+    fn patch_cwds_updates_matching_panes_only() {
+        let a = Uuid::new_v4();
+        let b = Uuid::new_v4();
+        let mut cfg = Config {
+            version: CONFIG_VERSION,
+            active_workspace: 1,
+            shells: vec![],
+            workspaces: vec![Workspace {
+                id: 1,
+                name: "main".into(),
+                root: LayoutNode::Split {
+                    direction: SplitDir::Horizontal,
+                    ratio: 0.5,
+                    a: Box::new(LayoutNode::Pane(PaneSpec {
+                        id: a,
+                        title: None,
+                        shell: "PowerShell 7".into(),
+                        cwd: Some("C:\\old".into()),
+                        startup_cmd: None,
+                        env: vec![],
+                    })),
+                    b: Box::new(LayoutNode::Pane(PaneSpec {
+                        id: b,
+                        title: None,
+                        shell: "PowerShell 7".into(),
+                        cwd: None,
+                        startup_cmd: None,
+                        env: vec![],
+                    })),
+                },
+            }],
+        };
+        let mut cwds = std::collections::HashMap::new();
+        cwds.insert(a, "C:\\Users\\alice\\dev".to_string());
+        // Note: no entry for `b` — it should remain untouched.
+        cfg.patch_cwds(&cwds);
+
+        let a_pane = cfg.workspaces[0].root.find_pane_mut(a).unwrap();
+        assert_eq!(a_pane.cwd.as_deref(), Some("C:\\Users\\alice\\dev"));
+        let b_pane = cfg.workspaces[0].root.find_pane_mut(b).unwrap();
+        assert_eq!(b_pane.cwd, None);
+    }
+
+    #[test]
+    fn migrate_v1_to_v2_clears_shells() {
+        let mut cfg = Config {
+            version: 1,
+            active_workspace: 1,
+            shells: vec![ShellProfile {
+                name: "stale".into(),
+                executable: "/stale".into(),
+                args: vec!["-old".into()],
+                icon: None,
+                color: None,
+            }],
+            workspaces: vec![Workspace::empty(1, "main")],
+        };
+        cfg.migrate();
+        assert_eq!(cfg.version, CONFIG_VERSION);
+        assert!(cfg.shells.is_empty(), "stale v1 shells should be cleared");
+    }
+
+    #[test]
+    fn migrate_is_noop_on_current_version() {
+        let mut cfg = Config::default();
+        cfg.shells.push(ShellProfile {
+            name: "keep".into(),
+            executable: "/keep".into(),
+            args: vec![],
+            icon: None,
+            color: None,
+        });
+        cfg.migrate();
+        assert_eq!(cfg.shells.len(), 1);
+    }
+
+    #[test]
+    fn for_each_pane_mut_visits_all_panes() {
+        let a = Uuid::new_v4();
+        let b = Uuid::new_v4();
+        let c = Uuid::new_v4();
+        let mut node = LayoutNode::Split {
+            direction: SplitDir::Horizontal,
+            ratio: 0.5,
+            a: Box::new(pane_with_id(a)),
+            b: Box::new(LayoutNode::Split {
+                direction: SplitDir::Vertical,
+                ratio: 0.5,
+                a: Box::new(pane_with_id(b)),
+                b: Box::new(pane_with_id(c)),
+            }),
+        };
+        let mut visited = Vec::new();
+        node.for_each_pane_mut(&mut |p| {
+            visited.push(p.id);
+            p.title = Some("visited".to_string());
+        });
+        assert_eq!(visited, vec![a, b, c]);
+        // Mutation should have persisted.
+        assert_eq!(
+            node.find_pane_mut(a).unwrap().title.as_deref(),
+            Some("visited")
+        );
     }
 
     #[test]

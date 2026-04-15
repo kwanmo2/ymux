@@ -51,6 +51,16 @@ fn which(name: &str) -> Option<PathBuf> {
 mod windows_detect {
     use super::{is_file, which, PathBuf, ShellProfile};
 
+    /// PowerShell prompt replacement that emits an OSC 7 `cwd` report before
+    /// the regular prompt. `-NoExit -Command <this>` runs it once at shell
+    /// startup and then drops into the interactive REPL, so the user never
+    /// sees the init script itself.
+    const PWSH_OSC7_INIT: &str = "function global:prompt { $p = ($PWD.Path -replace '\\\\','/'); $esc = [char]27; \"$esc]7;file:///$p$esc\\PS $($PWD.Path)> \" }";
+
+    /// cmd.exe `PROMPT` that embeds OSC 7. `$e` is ESC, `%CD:\=/%` is cmd's
+    /// in-place backslash→slash substitution for the current directory.
+    const CMD_OSC7_PROMPT: &str = "prompt $e]7;file:///%CD:\\=/%$e\\$P$G";
+
     pub fn run() -> Vec<ShellProfile> {
         let mut out = Vec::new();
 
@@ -59,7 +69,12 @@ mod windows_detect {
             out.push(ShellProfile {
                 name: "PowerShell 7".into(),
                 executable: p.to_string_lossy().into_owned(),
-                args: vec!["-NoLogo".into()],
+                args: vec![
+                    "-NoLogo".into(),
+                    "-NoExit".into(),
+                    "-Command".into(),
+                    PWSH_OSC7_INIT.into(),
+                ],
                 icon: Some("pwsh".into()),
                 color: Some("#012456".into()),
             });
@@ -70,18 +85,25 @@ mod windows_detect {
             out.push(ShellProfile {
                 name: "Windows PowerShell".into(),
                 executable: p.to_string_lossy().into_owned(),
-                args: vec!["-NoLogo".into()],
+                args: vec![
+                    "-NoLogo".into(),
+                    "-NoExit".into(),
+                    "-Command".into(),
+                    PWSH_OSC7_INIT.into(),
+                ],
                 icon: Some("powershell".into()),
                 color: Some("#012456".into()),
             });
         }
 
-        // 3. cmd.exe — always present.
+        // 3. cmd.exe — always present. `/Q` suppresses command echo at
+        // startup, `/K` runs the OSC 7 prompt setup then drops into
+        // interactive mode.
         if let Some(p) = find_cmd() {
             out.push(ShellProfile {
                 name: "Command Prompt".into(),
                 executable: p.to_string_lossy().into_owned(),
-                args: vec![],
+                args: vec!["/Q".into(), "/K".into(), CMD_OSC7_PROMPT.into()],
                 icon: Some("cmd".into()),
                 color: Some("#0c0c0c".into()),
             });
