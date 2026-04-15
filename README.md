@@ -2,6 +2,14 @@
 
 **English** | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
+<p align="center">
+  <a href="https://ko-fi.com/youngminkim">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi" />
+  </a>
+</p>
+
+---
+
 A lightweight, tmux-inspired terminal multiplexer for Windows.
 
 Built with Tauri 2 (Rust) + WebView2 + xterm.js. Designed to stay small, fast, and
@@ -13,12 +21,19 @@ Bash / WSL), and numbered workspaces that each remember their own layout.
 
 - **Layouts that persist**: recursive horizontal / vertical splits. Each pane
   remembers its shell, `cwd`, and an optional startup command.
+- **Live cwd inheritance**: splitting a pane opens the new pane in the same
+  working directory the parent shell is currently in — not the stale startup
+  directory. Powered by OSC 7 escape-sequence tracking.
 - **Shell auto-detection**: scans the system for `cmd.exe`, Windows PowerShell,
   PowerShell 7 (`pwsh`), Git Bash, and WSL distros, and exposes them as
   selectable profiles.
-- **Numbered workspaces**: `Ctrl+1` .. `Ctrl+9` switch between workspaces.
-  Every workspace saves its own layout. Panes stay alive across switches
-  (tmux-style) so your REPLs and tails don't die.
+- **Numbered workspaces**: `Ctrl+Shift+1` .. `Ctrl+Shift+9` switch between
+  workspaces. Every workspace saves its own layout. Panes stay alive across
+  switches (tmux-style) so your REPLs and tails don't die.
+- **Clickable URLs**: `Ctrl+Click` on any `http://` or `https://` link inside
+  a terminal opens it in your default browser.
+- **Keyboard shortcut reference**: press `?` in the top-right corner of the
+  toolbar for a built-in cheat sheet. Supports English, 한국어, and 日本語.
 - **Lightweight**: Tauri binary + WebView2. Installer target < 10 MB.
 
 ## Development
@@ -41,26 +56,22 @@ PTY verification must be done on Windows.
 profiles. It is rewritten on every structural change (debounced) and on app
 close.
 
-## Keyboard
+## Keyboard shortcuts
 
-| Shortcut            | Action                    |
-|---------------------|---------------------------|
-| `Ctrl+Shift+D`      | Split horizontally        |
-| `Ctrl+Shift+-`      | Split vertically          |
-| `Ctrl+Shift+W`      | Close focused pane        |
-| `Ctrl+Tab`          | Cycle pane focus          |
-| `Ctrl+1` .. `Ctrl+9`| Switch workspace          |
-| `Ctrl+Shift+N`      | New workspace             |
+| Shortcut                    | Action                               |
+|-----------------------------|--------------------------------------|
+| `Ctrl+Shift+D`              | Split pane horizontally              |
+| `Ctrl+Shift+−`              | Split pane vertically                |
+| `Ctrl+Shift+W`              | Close focused pane                   |
+| `Ctrl+Tab`                  | Focus next pane                      |
+| `Ctrl+Shift+Tab`            | Focus previous pane                  |
+| `Ctrl+Shift+1` .. `Ctrl+Shift+9` | Switch workspace                |
+| `Ctrl+Click` on a URL       | Open link in default browser         |
+| `?` button (toolbar)        | Show / hide this shortcut reference  |
+
+> **Tip:** the `?` button in the top-right corner of the toolbar opens a
+> built-in reference popup where you can also switch the display language.
 
 ## Status
 
 Early MVP. See `docs/` (TBD) for the roadmap.
-
-## Support
-
-If ymux is useful to you, consider buying me a coffee — it keeps the project
-moving.
-
-[![ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/youngminkim)
-
-<https://ko-fi.com/youngminkim>
