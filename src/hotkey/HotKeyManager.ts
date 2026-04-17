@@ -76,6 +76,8 @@ export function openHotKeyManager(
 
   backdrop.appendChild(modal);
   document.body.appendChild(backdrop);
+  backdrop.classList.add("help-backdrop--visible");
+  modal.classList.add("help-modal--visible");
 
   backdrop.addEventListener("click", (ev) => {
     if (ev.target === backdrop) close();

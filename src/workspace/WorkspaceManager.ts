@@ -100,23 +100,29 @@ export class WorkspaceManager {
     //      call `pane.focus()` on the clicked `.pane`, which guarantees
     //      both DOM focus and `term.focus()` even if xterm later rearranges
     //      things underneath us.
-    const handlePaneActivation = (target: EventTarget | null) => {
+    const handlePaneActivation = (target: EventTarget | null, forceFocus: boolean) => {
       const el = target as HTMLElement | null;
       if (!el) return;
       const paneEl = el.closest<HTMLElement>(".pane[data-pane-id]");
       const id = paneEl?.dataset.paneId;
       if (!id) return;
-      const cache = this.paneCaches.get(this.activeId);
-      const pane = cache?.get(id);
-      if (pane) {
-        pane.focus();
-      }
       this.focusedPaneId = id;
+      if (forceFocus) {
+        // Don't steal focus from text inputs inside panes (browser URL bar,
+        // search bar, hotkey modal inputs). Buttons are fine — the click
+        // handler runs regardless and terminals should regain focus.
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          return;
+        }
+        const cache = this.paneCaches.get(this.activeId);
+        const pane = cache?.get(id);
+        if (pane) pane.focus();
+      }
     };
-    this.host.addEventListener("focusin", (ev) => handlePaneActivation(ev.target));
+    this.host.addEventListener("focusin", (ev) => handlePaneActivation(ev.target, false));
     this.host.addEventListener(
       "pointerdown",
-      (ev) => handlePaneActivation(ev.target),
+      (ev) => handlePaneActivation(ev.target, true),
       true, // capture phase: run before xterm.js's own handlers
     );
 
