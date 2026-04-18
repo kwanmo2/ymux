@@ -18,9 +18,9 @@
 
 A lightweight, tmux-inspired terminal multiplexer for Windows.
 
-<p align="center">
-  <video src="https://github.com/YoungMins/ymux/raw/main/video/ymux_tutorial.mp4" controls muted playsinline width="720"></video>
-</p>
+
+
+
 
 
 Built with Tauri 2 (Rust) + WebView2 + xterm.js. Designed to stay small, fast, and
