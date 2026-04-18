@@ -18,10 +18,7 @@
 
 A lightweight, tmux-inspired terminal multiplexer for Windows.
 
-
-
-
-
+https://github.com/user-attachments/assets/705fff59-0bda-4460-a87f-d7ba6f50993a
 
 Built with Tauri 2 (Rust) + WebView2 + xterm.js. Designed to stay small, fast, and
 native on Windows while giving you saved layouts, per-pane working directories
