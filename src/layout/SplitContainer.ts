@@ -156,12 +156,14 @@ function makeGutter(
     dragging = false;
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", endDrag);
+    setIframePointerEvents("");
     ctx.onRatioCommitted(path, ratio);
   };
 
   gutter.addEventListener("pointerdown", (ev) => {
     ev.preventDefault();
     dragging = true;
+    setIframePointerEvents("none");
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", endDrag);
   });
@@ -171,4 +173,10 @@ function makeGutter(
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
+}
+
+function setIframePointerEvents(value: string): void {
+  for (const iframe of document.querySelectorAll<HTMLIFrameElement>("iframe")) {
+    iframe.style.pointerEvents = value;
+  }
 }
