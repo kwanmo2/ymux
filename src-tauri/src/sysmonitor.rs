@@ -195,14 +195,20 @@ mod gpu {
         // Use the Windows registry to discover display adapters. This is
         // simpler than calling D3DKMTEnumAdapters (which needs linking to
         // gdi32). The registry path contains the adapter description.
-        use windows::Win32::System::Registry::*;
         use windows::core::PCWSTR;
+        use windows::Win32::System::Registry::*;
 
         let mut result = Vec::new();
         let subkey = wide_string("SYSTEM\\CurrentControlSet\\Control\\Video");
         let mut hkey = HKEY::default();
         let status = unsafe {
-            RegOpenKeyExW(HKEY_LOCAL_MACHINE, PCWSTR(subkey.as_ptr()), 0, KEY_READ, &mut hkey)
+            RegOpenKeyExW(
+                HKEY_LOCAL_MACHINE,
+                PCWSTR(subkey.as_ptr()),
+                0,
+                KEY_READ,
+                &mut hkey,
+            )
         };
         if status.is_err() {
             return result;

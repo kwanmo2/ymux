@@ -443,11 +443,7 @@ esac
                 if let Some(cmd) = cmd_path.as_ref() {
                     // `call` keeps the outer cmd.exe alive after the batch
                     // finishes so we can chain our OSC 7 prompt setup.
-                    let joined = format!(
-                        "call \"{}\" & {}",
-                        vsdevcmd.display(),
-                        CMD_OSC7_PROMPT
-                    );
+                    let joined = format!("call \"{}\" & {}", vsdevcmd.display(), CMD_OSC7_PROMPT);
                     out.push(ShellProfile {
                         name: format!("Developer Command Prompt for VS {label}"),
                         executable: cmd.to_string_lossy().into_owned(),
@@ -496,8 +492,7 @@ esac
     fn vs_labels(install_path: &str) -> (String, String) {
         const MARKER: &str = "Microsoft Visual Studio";
         if let Some(idx) = install_path.find(MARKER) {
-            let tail = install_path[idx + MARKER.len()..]
-                .trim_start_matches(['\\', '/']);
+            let tail = install_path[idx + MARKER.len()..].trim_start_matches(['\\', '/']);
             let mut parts = tail.split(['\\', '/']);
             let year = parts.next().unwrap_or("").to_string();
             let edition = parts.next().unwrap_or("").to_string();
