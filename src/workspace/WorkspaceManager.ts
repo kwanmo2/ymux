@@ -16,6 +16,7 @@ import type {
 import { api } from "../ipc/bridge";
 import { TerminalPane } from "../terminal/TerminalPane";
 import { BrowserPane } from "../browser/BrowserPane";
+import { NativeBrowserPane } from "../browser/NativeBrowserPane";
 import type { Pane } from "../layout/Pane";
 import {
   findPane,
@@ -233,6 +234,15 @@ export class WorkspaceManager {
         onZoomRequested: () => {
           this.focusedPaneId = spec.id;
           this.toggleZoomFocused();
+        },
+      });
+    }
+    if (spec.pane_kind === "native_browser") {
+      return new NativeBrowserPane({
+        id: spec.id,
+        url: spec.url,
+        onFocus: () => {
+          this.focusedPaneId = spec.id;
         },
       });
     }

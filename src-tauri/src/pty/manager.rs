@@ -33,6 +33,9 @@ pub struct PtyManager {
     // as they parse OSC 7 sequences, and `save_config` reads from it to
     // patch the persisted layout with live working directories.
     cwds: CwdMap,
+    // Extra environment variables injected into every spawned PTY process
+    // (e.g. `YMUX_IPC`). Set once at startup, read on every spawn.
+    extra_env: Mutex<Vec<(String, String)>>,
 }
 
 impl Default for PtyManager {
@@ -43,6 +46,7 @@ impl Default for PtyManager {
             tx,
             rx: Mutex::new(Some(rx)),
             cwds: Arc::new(Mutex::new(HashMap::new())),
+            extra_env: Mutex::new(Vec::new()),
         }
     }
 }
@@ -54,14 +58,27 @@ impl PtyManager {
         self.rx.lock().take()
     }
 
+    /// Register extra environment variables that will be injected into every
+    /// subsequently spawned PTY process. Intended for things like `YMUX_IPC`.
+    pub fn set_extra_env(&self, env: Vec<(String, String)>) {
+        *self.extra_env.lock() = env;
+    }
+
     pub fn spawn(
         &self,
         spec: &PaneSpec,
         profile: &ShellProfile,
         size: PtySize,
     ) -> YmuxResult<SpawnedPane> {
-        let session =
-            PtySession::spawn(spec, profile, size, self.tx.clone(), Arc::clone(&self.cwds))?;
+        let extra = self.extra_env.lock().clone();
+        let session = PtySession::spawn(
+            spec,
+            profile,
+            size,
+            self.tx.clone(),
+            Arc::clone(&self.cwds),
+            &extra,
+        )?;
         let id = session.id;
         let shell = profile.name.clone();
         self.sessions.lock().insert(id, session);

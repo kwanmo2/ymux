@@ -22,9 +22,19 @@ pub mod commands;
 #[cfg(feature = "desktop")]
 pub mod updater;
 
+// Native browser child webview management. Desktop-only because it uses
+// WebviewWindowBuilder and Manager traits from Tauri.
+#[cfg(feature = "desktop")]
+pub mod webview;
+
 // System resource monitor (CPU, RAM, disk, network, GPU). Desktop-only
 // because it emits Tauri events.
 #[cfg(feature = "desktop")]
 pub mod sysmonitor;
+
+// Inter-pane IPC server. Desktop-only because it emits Tauri events and
+// requires the yipc crate.
+#[cfg(feature = "desktop")]
+pub mod ipc_server;
 
 pub use error::{YmuxError, YmuxResult};

@@ -63,6 +63,7 @@ impl PtySession {
         size: PtySize,
         events: Sender<PaneEvent>,
         cwds: CwdMap,
+        extra_env: &[(String, String)],
     ) -> YmuxResult<Self> {
         let pty_system = native_pty_system();
         let pair = pty_system
@@ -77,6 +78,10 @@ impl PtySession {
             cmd.cwd(cwd);
         }
         for (k, v) in &spec.env {
+            cmd.env(k, v);
+        }
+        // Inject manager-level env vars (e.g. YMUX_IPC).
+        for (k, v) in extra_env {
             cmd.env(k, v);
         }
 
@@ -221,6 +226,7 @@ mod tests {
             },
             tx,
             Arc::clone(&cwds),
+            &[],
         )
         .expect("spawn");
         session

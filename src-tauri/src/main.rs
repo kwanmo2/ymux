@@ -3,6 +3,7 @@
 use tauri::{Manager, RunEvent};
 use ymux_lib::commands::{start_pty_event_pump, AppState};
 use ymux_lib::config::ConfigStore;
+use ymux_lib::ipc_server::start_ipc_server;
 use ymux_lib::pty::PtyManager;
 use ymux_lib::sysmonitor::start_sysmonitor;
 use ymux_lib::updater::start_update_checker;
@@ -46,8 +47,16 @@ fn main() {
             ymux_lib::commands::set_active_workspace,
             ymux_lib::commands::get_pane_cwd,
             ymux_lib::commands::open_url,
+            ymux_lib::webview::create_webview,
+            ymux_lib::webview::destroy_webview,
+            ymux_lib::webview::navigate_webview,
+            ymux_lib::webview::resize_webview,
         ])
         .setup(|app| {
+            let ipc_addr = start_ipc_server(app.handle().clone());
+            // Inject YMUX_IPC into every PTY that will be spawned.
+            let state = app.state::<AppState>();
+            state.pty.set_extra_env(vec![("YMUX_IPC".into(), ipc_addr)]);
             start_pty_event_pump(app.handle().clone());
             start_update_checker(app.handle().clone());
             start_sysmonitor(app.handle().clone());

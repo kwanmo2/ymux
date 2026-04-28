@@ -117,8 +117,7 @@ impl Theme {
     /// Serialize the current theme to TOML and write it to `theme.toml`.
     pub fn save(&self) -> std::io::Result<()> {
         let dir = ensure_config_dir()?;
-        let text = toml::to_string_pretty(self)
-            .map_err(std::io::Error::other)?;
+        let text = toml::to_string_pretty(self).map_err(std::io::Error::other)?;
         std::fs::write(dir.join("theme.toml"), text)
     }
 }

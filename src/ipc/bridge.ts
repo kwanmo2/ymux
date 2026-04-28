@@ -105,6 +105,33 @@ export const api = {
 
   /// Open a URL in the system default browser. Only http/https are allowed.
   openUrl: (url: string): Promise<void> => call("open_url", { url }),
+
+  /// Create a native child webview window positioned over a layout placeholder.
+  createWebview: (
+    id: string,
+    url: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): Promise<void> => call("create_webview", { id, url, x, y, width, height }),
+
+  /// Destroy (close) a native child webview.
+  destroyWebview: (id: string): Promise<void> =>
+    call("destroy_webview", { id }),
+
+  /// Navigate an existing native child webview to a new URL.
+  navigateWebview: (id: string, url: string): Promise<void> =>
+    call("navigate_webview", { id, url }),
+
+  /// Reposition and resize an existing native child webview.
+  resizeWebview: (
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): Promise<void> => call("resize_webview", { id, x, y, width, height }),
 };
 
 /// Subscribe to PTY stdout for a single pane. Returns an unlisten handle.

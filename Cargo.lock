@@ -5958,6 +5958,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "yipc"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
 name = "ylauncher"
 version = "0.1.0"
 dependencies = [
@@ -5993,8 +6003,10 @@ dependencies = [
  "toml 0.8.23",
  "tracing",
  "tracing-subscriber",
+ "url",
  "uuid",
  "windows 0.56.0",
+ "yipc",
 ]
 
 [[package]]

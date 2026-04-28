@@ -13,7 +13,7 @@ export interface ShellProfile {
   color?: string | null;
 }
 
-export type PaneKind = "terminal" | "browser";
+export type PaneKind = "terminal" | "browser" | "native_browser";
 
 export interface HotKeyDef {
   label: string;

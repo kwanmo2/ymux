@@ -44,6 +44,14 @@ tauri = { version = "2", optional = true , features = [] }
 # need it, and rustls keeps the binary footprint minimal vs. openssl.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "blocking"], optional = true }
 
+# URL parsing for native webview navigation. Already in the dependency tree
+# via Tauri; listed explicitly so webview.rs can reference `url::Url`.
+url = { version = "2", optional = true }
+
+# Pane-to-pane IPC. Desktop-only because the server requires the Tauri
+# AppHandle to emit events to the frontend.
+yipc = { path = "../crates/yipc", optional = true }
+
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.56", features = [
     "Win32_System_Registry",
@@ -53,7 +61,7 @@ windows = { version = "0.56", features = [
 
 [features]
 default = ["desktop"]
-desktop = ["dep:tauri", "dep:tauri-build", "dep:reqwest"]
+desktop = ["dep:tauri", "dep:tauri-build", "dep:reqwest", "dep:yipc", "dep:url"]
 
 [profile.release]
 lto = true

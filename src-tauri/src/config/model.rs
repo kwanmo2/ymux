@@ -313,6 +313,7 @@ pub enum PaneKind {
     #[default]
     Terminal,
     Browser,
+    NativeBrowser,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
