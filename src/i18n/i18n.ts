@@ -581,4 +581,16 @@ const strings: Translations = {
     hi: "डिस्क — अधिकतम", es: "discos — máx", fr: "disques — max", ar: "أقراص — أقصى",
     pt: "discos — máx", ru: "дисков — макс", tr: "disk — maks", de: "Festplatten — max", vi: "ổ đĩa — tối đa",
   },
+  "palette.placeholder": {
+    en: "Type a command…", ko: "명령어를 입력하세요…", ja: "コマンドを入力…",
+    zh: "输入命令…", hi: "कमांड टाइप करें…", es: "Escribe un comando…",
+    fr: "Tapez une commande…", ar: "اكتب أمرًا…", pt: "Digite um comando…",
+    ru: "Введите команду…", tr: "Komut yazın…", de: "Befehl eingeben…", vi: "Nhập lệnh…",
+  },
+  "palette.empty": {
+    en: "No matching commands", ko: "일치하는 명령이 없습니다", ja: "一致するコマンドなし",
+    zh: "没有匹配的命令", hi: "कोई मिलान कमांड नहीं", es: "Sin comandos coincidentes",
+    fr: "Aucune commande correspondante", ar: "لا أوامر مطابقة", pt: "Nenhum comando correspondente",
+    ru: "Нет совпадающих команд", tr: "Eşleşen komut yok", de: "Keine passenden Befehle", vi: "Không có lệnh phù hợp",
+  },
 };

@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "src-tauri",
+    "crates/ytheme",
+    "tools/ymon",
+    "tools/ydir",
+    "tools/ycode",
+    "tools/ylauncher",
+]
+resolver = "2"

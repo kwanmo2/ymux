@@ -9,6 +9,8 @@ import { mountWorkspaceBar, refreshWorkspaceBar } from "./workspace/WorkspaceBar
 import { mountUpdateBanner } from "./update/UpdateBanner";
 import { mountStatusBar } from "./statusbar/StatusBar";
 import { initLang, t } from "./i18n/i18n";
+import { mountCommandPalette, toggle as togglePalette } from "./palette/CommandPalette";
+import { builtinCommands } from "./palette/commands";
 
 async function main(): Promise<void> {
   initLang();
@@ -47,6 +49,9 @@ async function main(): Promise<void> {
   void mountStatusBar(app).catch((e) =>
     console.warn("mountStatusBar failed:", e),
   );
+
+  // Command palette (Ctrl+Shift+P)
+  mountCommandPalette(document.body, builtinCommands(manager));
 
   // Global keybindings. Tauri's global-shortcut plugin is overkill for
   // window-local bindings — plain DOM events are sufficient inside WebView2.
@@ -111,6 +116,13 @@ async function main(): Promise<void> {
     if (ev.ctrlKey && !ev.shiftKey && !ev.altKey && (key === "F" || key === "f")) {
       ev.preventDefault();
       manager.toggleSearchOnFocused();
+      return;
+    }
+
+    // Ctrl+Shift+P command palette.
+    if (ev.ctrlKey && ev.shiftKey && (key === "P" || key === "p")) {
+      ev.preventDefault();
+      togglePalette();
       return;
     }
 

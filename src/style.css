@@ -704,6 +704,103 @@ body,
   border-color: #ff5e5b;
 }
 
+/* ── Command Palette ─────────────────────────────────────────────────────── */
+
+.palette-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+}
+
+.palette-backdrop--visible {
+  display: block;
+}
+
+.palette {
+  display: none;
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 201;
+  width: 520px;
+  max-width: 90vw;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.palette--visible {
+  display: flex;
+  flex-direction: column;
+}
+
+.palette__header {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.palette__input {
+  width: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.palette__input:focus {
+  border-color: var(--accent);
+}
+
+.palette__list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.palette__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.palette__item:hover,
+.palette__item--selected {
+  background: var(--bg-hover);
+}
+
+.palette__label {
+  color: var(--fg);
+}
+
+.palette__keybinding {
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.palette__empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
 /* ── System monitor status bar ───────────────────────────────────────────── */
 
 .status-bar {

@@ -1,0 +1,12 @@
+[package]
+name = "ylauncher"
+version = "0.1.0"
+edition = "2021"
+description = "Launcher CLI for the ymux tool family — lists and dispatches y* tools"
+
+[[bin]]
+name = "y"
+path = "src/main.rs"
+
+[dependencies]
+ytheme = { path = "../../crates/ytheme" }
