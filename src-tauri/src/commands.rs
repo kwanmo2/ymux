@@ -72,27 +72,6 @@ pub fn load_bootstrap(state: State<'_, AppState>) -> YmuxResult<BootstrapPayload
         }
     }
     let config = state.config.snapshot();
-    // DEBUG: check if bg_color survived TOML round-trip
-    for ws in &config.workspaces {
-        for pane in ws.panes() {
-            eprintln!(
-                "[load_bootstrap] pane {} bg_color={:?}",
-                pane.id, pane.bg_color
-            );
-        }
-    }
-    eprintln!(
-        "[load_bootstrap] config_path={}",
-        state.config.path().display()
-    );
-    // Also dump TOML content to verify bg_color is on disk
-    if let Ok(raw) = std::fs::read_to_string(state.config.path()) {
-        for line in raw.lines() {
-            if line.contains("bg_color") {
-                eprintln!("[load_bootstrap] TOML line: {}", line);
-            }
-        }
-    }
     let shells = config.shells.clone();
     Ok(BootstrapPayload {
         config,
@@ -125,17 +104,6 @@ pub fn save_config(state: State<'_, AppState>, config: Config) -> YmuxResult<()>
     // into `PtyManager.cwds`, and we snapshot it here so the saved layout
     // tree carries the live directory instead of the stale initial one.
     let mut incoming = config;
-    // DEBUG: log bg_color values in incoming config
-    for ws in &incoming.workspaces {
-        for pane in ws.panes() {
-            if !pane.bg_color.is_empty() {
-                eprintln!(
-                    "[save_config] pane {} has bg_color={}",
-                    pane.id, pane.bg_color
-                );
-            }
-        }
-    }
     incoming.patch_cwds(&state.pty.cwds_snapshot());
     state.config.update(|c| c.merge_layouts_from(incoming));
     state.config.flush()?;
