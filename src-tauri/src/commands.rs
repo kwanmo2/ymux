@@ -72,6 +72,24 @@ pub fn load_bootstrap(state: State<'_, AppState>) -> YmuxResult<BootstrapPayload
         }
     }
     let config = state.config.snapshot();
+    // DEBUG: check if bg_color survived TOML round-trip
+    for ws in &config.workspaces {
+        for pane in ws.panes() {
+            eprintln!(
+                "[load_bootstrap] pane {} bg_color={:?}",
+                pane.id, pane.bg_color
+            );
+        }
+    }
+    eprintln!("[load_bootstrap] config_path={}", state.config.path().display());
+    // Also dump TOML content to verify bg_color is on disk
+    if let Ok(raw) = std::fs::read_to_string(state.config.path()) {
+        for line in raw.lines() {
+            if line.contains("bg_color") {
+                eprintln!("[load_bootstrap] TOML line: {}", line);
+            }
+        }
+    }
     let shells = config.shells.clone();
     Ok(BootstrapPayload {
         config,
