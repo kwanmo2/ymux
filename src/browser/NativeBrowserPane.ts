@@ -101,11 +101,20 @@ export class NativeBrowserPane implements Pane {
 
   async spawn(): Promise<void> {
     if (this.spawned) return;
-    const initial = this.url === DEFAULT_URL ? DEFAULT_URL : normalizeUrl(this.url) ?? DEFAULT_URL;
+    const initial = this.url === DEFAULT_URL ? "https://www.bing.com" : normalizeUrl(this.url) ?? "https://www.bing.com";
     const rect = this.getRect();
-    await api.createWebview(this.id, initial, rect.x, rect.y, rect.width, rect.height);
-    this.spawned = true;
-    if (initial !== DEFAULT_URL) this.pushHistory(initial);
+    console.log("[NativeBrowser] spawn", { id: this.id, initial, rect });
+    try {
+      await api.createWebview(this.id, initial, rect.x, rect.y, rect.width, rect.height);
+      this.spawned = true;
+      this.urlInput.value = initial;
+      this.pushHistory(initial);
+      console.log("[NativeBrowser] created successfully");
+    } catch (e) {
+      console.error("[NativeBrowser] create failed:", e);
+      this.placeholder.textContent = `Failed to create browser: ${e}`;
+      throw e;
+    }
   }
 
   focus(): void {
@@ -123,12 +132,15 @@ export class NativeBrowserPane implements Pane {
   }
 
   dispose(): void {
+    console.log("[NativeBrowser] dispose", this.id);
     this.cleanupLang();
     this.resizeObserver.disconnect();
     if (this.repositionRaf !== null) cancelAnimationFrame(this.repositionRaf);
     if (this.spawned) {
-      void api.destroyWebview(this.id).catch(() => {});
       this.spawned = false;
+      void api.destroyWebview(this.id).catch((e) =>
+        console.warn("[NativeBrowser] destroy failed:", e),
+      );
     }
     this.element.remove();
   }
@@ -139,7 +151,12 @@ export class NativeBrowserPane implements Pane {
     this.url = url;
     this.urlInput.value = url;
     this.pushHistory(url);
-    if (this.spawned) void api.navigateWebview(this.id, url).catch(() => {});
+    if (this.spawned) {
+      console.log("[NativeBrowser] navigate:", url);
+      void api.navigateWebview(this.id, url).catch((e) =>
+        console.error("[NativeBrowser] navigate failed:", e),
+      );
+    }
     this.opts.onUrlChange?.(url);
   }
 
@@ -149,7 +166,11 @@ export class NativeBrowserPane implements Pane {
     const url = this.history[this.historyIndex];
     this.url = url;
     this.urlInput.value = url;
-    if (this.spawned) void api.navigateWebview(this.id, url).catch(() => {});
+    if (this.spawned) {
+      void api.navigateWebview(this.id, url).catch((e) =>
+        console.error("[NativeBrowser] back failed:", e),
+      );
+    }
     this.opts.onUrlChange?.(url);
   }
 
@@ -159,13 +180,19 @@ export class NativeBrowserPane implements Pane {
     const url = this.history[this.historyIndex];
     this.url = url;
     this.urlInput.value = url;
-    if (this.spawned) void api.navigateWebview(this.id, url).catch(() => {});
+    if (this.spawned) {
+      void api.navigateWebview(this.id, url).catch((e) =>
+        console.error("[NativeBrowser] forward failed:", e),
+      );
+    }
     this.opts.onUrlChange?.(url);
   }
 
   private doReload(): void {
     if (this.spawned && this.url) {
-      void api.navigateWebview(this.id, this.url).catch(() => {});
+      void api.navigateWebview(this.id, this.url).catch((e) =>
+        console.error("[NativeBrowser] reload failed:", e),
+      );
     }
   }
 
