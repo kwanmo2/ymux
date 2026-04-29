@@ -46,24 +46,63 @@ fn run(
         if event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
-                        KeyCode::Tab => app.toggle_panel(),
-                        KeyCode::Up | KeyCode::Char('k') => app.move_up(),
-                        KeyCode::Down | KeyCode::Char('j') => app.move_down(),
-                        KeyCode::Home => app.move_to_top(),
-                        KeyCode::End => app.move_to_bottom(),
-                        KeyCode::Enter => app.enter_dir()?,
-                        KeyCode::Backspace => app.go_parent()?,
-                        KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.refresh()?;
+                    // Run dialog takes priority
+                    if app.run_dialog.is_some() {
+                        match key.code {
+                            KeyCode::Esc => app.run_dialog_cancel(),
+                            KeyCode::Backspace => app.run_dialog_backspace(),
+                            KeyCode::Enter => {
+                                if let Some(mut cmd) = app.run_dialog_confirm() {
+                                    // Suspend TUI, run the command, resume TUI
+                                    disable_raw_mode()?;
+                                    terminal.backend_mut().execute(LeaveAlternateScreen)?;
+                                    terminal.show_cursor()?;
+
+                                    let status = cmd.status();
+                                    match status {
+                                        Ok(s) => {
+                                            if !s.success() {
+                                                eprintln!(
+                                                    "\n[exited with code {}]",
+                                                    s.code().unwrap_or(-1)
+                                                );
+                                            }
+                                        }
+                                        Err(e) => eprintln!("\nFailed to run: {}", e),
+                                    }
+                                    eprintln!("\nPress Enter to return to yDir...");
+                                    let _ = std::io::stdin().read_line(&mut String::new());
+
+                                    // Resume TUI
+                                    enable_raw_mode()?;
+                                    terminal.backend_mut().execute(EnterAlternateScreen)?;
+                                    terminal.clear()?;
+                                    let _ = app.refresh();
+                                }
+                            }
+                            KeyCode::Char(c) => app.run_dialog_input(c),
+                            _ => {}
                         }
-                        KeyCode::Char('d') => app.delete_selected()?,
-                        KeyCode::Char('c') => app.mark_copy(),
-                        KeyCode::Char('m') => app.mark_move(),
-                        KeyCode::Char('p') => app.paste()?,
-                        KeyCode::Char('.') => app.toggle_hidden(),
-                        _ => {}
+                    } else {
+                        match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
+                            KeyCode::Tab => app.toggle_panel(),
+                            KeyCode::Up | KeyCode::Char('k') => app.move_up(),
+                            KeyCode::Down | KeyCode::Char('j') => app.move_down(),
+                            KeyCode::Home => app.move_to_top(),
+                            KeyCode::End => app.move_to_bottom(),
+                            KeyCode::Enter => app.enter_dir()?,
+                            KeyCode::Backspace => app.go_parent()?,
+                            KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                app.refresh()?;
+                            }
+                            KeyCode::Char('d') => app.delete_selected()?,
+                            KeyCode::Char('c') => app.mark_copy(),
+                            KeyCode::Char('m') => app.mark_move(),
+                            KeyCode::Char('p') => app.paste()?,
+                            KeyCode::Char('.') => app.toggle_hidden(),
+                            _ => {}
+                        }
                     }
                 }
             }

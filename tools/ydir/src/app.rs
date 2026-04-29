@@ -71,6 +71,13 @@ pub enum ClipboardOp {
     Move,
 }
 
+/// Run dialog state: shown when user presses Enter on an executable file.
+pub struct RunDialog {
+    pub file_path: PathBuf,
+    pub file_name: String,
+    pub args_input: String,
+}
+
 pub struct App {
     pub left: Panel,
     pub right: Panel,
@@ -78,6 +85,7 @@ pub struct App {
     pub show_hidden: bool,
     pub clipboard: Option<(PathBuf, ClipboardOp)>,
     pub status_msg: Option<String>,
+    pub run_dialog: Option<RunDialog>,
 }
 
 impl App {
@@ -91,6 +99,7 @@ impl App {
             show_hidden: false,
             clipboard: None,
             status_msg: None,
+            run_dialog: None,
         })
     }
 
@@ -137,16 +146,57 @@ impl App {
     }
 
     pub fn enter_dir(&mut self) -> Result<()> {
-        let show_hidden = self.show_hidden;
-        let panel = self.active_panel_mut();
-        if let Some(entry) = panel.entries.get(panel.selected).cloned() {
+        let entry = self.active_panel().selected_entry().cloned();
+        if let Some(entry) = entry {
             if entry.is_dir {
+                let show_hidden = self.show_hidden;
+                let panel = self.active_panel_mut();
                 panel.cwd = entry.path;
                 panel.selected = 0;
                 panel.reload(show_hidden)?;
+            } else if is_executable(&entry.name) {
+                self.run_dialog = Some(RunDialog {
+                    file_name: entry.name.clone(),
+                    file_path: entry.path.clone(),
+                    args_input: String::new(),
+                });
+            } else {
+                self.status_msg = Some(format!("Not executable: {}", entry.name));
             }
         }
         Ok(())
+    }
+
+    pub fn run_dialog_input(&mut self, c: char) {
+        if let Some(ref mut dlg) = self.run_dialog {
+            dlg.args_input.push(c);
+        }
+    }
+
+    pub fn run_dialog_backspace(&mut self) {
+        if let Some(ref mut dlg) = self.run_dialog {
+            dlg.args_input.pop();
+        }
+    }
+
+    pub fn run_dialog_cancel(&mut self) {
+        self.run_dialog = None;
+    }
+
+    /// Execute the file with args from the dialog. Returns the Command to run.
+    pub fn run_dialog_confirm(&mut self) -> Option<std::process::Command> {
+        let dlg = self.run_dialog.take()?;
+        let mut cmd = std::process::Command::new(&dlg.file_path);
+        let args_str = dlg.args_input.trim();
+        if !args_str.is_empty() {
+            for arg in args_str.split_whitespace() {
+                cmd.arg(arg);
+            }
+        }
+        // Run in the active panel's cwd
+        cmd.current_dir(&self.active_panel().cwd);
+        self.status_msg = Some(format!("Running: {} {}", dlg.file_name, args_str));
+        Some(cmd)
     }
 
     pub fn go_parent(&mut self) -> Result<()> {
@@ -245,6 +295,14 @@ impl App {
         }
         Ok(())
     }
+}
+
+fn is_executable(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    matches!(
+        lower.rsplit('.').next(),
+        Some("exe" | "bat" | "cmd" | "ps1" | "com" | "msi" | "sh" | "py" | "rb" | "js")
+    )
 }
 
 fn list_dir(dir: &Path, show_hidden: bool) -> Result<Vec<FileEntry>> {
