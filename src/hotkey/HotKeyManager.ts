@@ -39,7 +39,7 @@ export function openHotKeyManager(
   colorPicker.addEventListener("input", () => {
     const v = colorPicker.value;
     hexInput.value = v;
-    onBgColorChange(v === "#0b0f14" ? null : v);
+    onBgColorChange(v === "#0b0f14" ? "" : v);
   });
   colorRow.appendChild(colorPicker);
 
@@ -53,7 +53,7 @@ export function openHotKeyManager(
     const v = hexInput.value.trim();
     if (/^#[0-9a-fA-F]{6}$/.test(v)) {
       colorPicker.value = v;
-      onBgColorChange(v === "#0b0f14" ? null : v);
+      onBgColorChange(v === "#0b0f14" ? "" : v);
     }
   });
   colorRow.appendChild(hexInput);
@@ -65,7 +65,7 @@ export function openHotKeyManager(
   resetBtn.addEventListener("click", () => {
     colorPicker.value = "#0b0f14";
     hexInput.value = "#0b0f14";
-    onBgColorChange(null);
+    onBgColorChange("");
   });
   colorRow.appendChild(resetBtn);
 

@@ -361,7 +361,7 @@ export class TerminalPane implements Pane {
   /// title is also written back into the PaneSpec by WorkspaceManager.
   setBgColor(color: string | null): void {
     const bg = color || "#0b0f14";
-    this.spec = { ...this.spec, bg_color: color };
+    this.spec = { ...this.spec, bg_color: color ?? "" };
     this.term.options.theme = { ...this.term.options.theme, background: bg };
     this.element.style.background = bg;
   }

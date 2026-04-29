@@ -352,9 +352,9 @@ pub struct PaneSpec {
     /// User-defined HotKey buttons shown above terminal panes.
     #[serde(default)]
     pub hotkeys: Vec<HotKeyDef>,
-    /// Custom background color for this pane (hex string like "#1a2b3c").
+    /// Custom background color for this pane (hex like "#1a2b3c", or "" for default).
     #[serde(default)]
-    pub bg_color: Option<String>,
+    pub bg_color: String,
 }
 
 impl PaneSpec {
@@ -369,7 +369,7 @@ impl PaneSpec {
             pane_kind: PaneKind::Terminal,
             url: None,
             hotkeys: Vec::new(),
-            bg_color: None,
+            bg_color: String::new(),
         }
     }
 
@@ -386,7 +386,7 @@ impl PaneSpec {
             pane_kind: PaneKind::Terminal,
             url: None,
             hotkeys: Vec::new(),
-            bg_color: None,
+            bg_color: String::new(),
         }
     }
 
@@ -401,7 +401,7 @@ impl PaneSpec {
             pane_kind: PaneKind::Browser,
             url: Some(url.into()),
             hotkeys: Vec::new(),
-            bg_color: None,
+            bg_color: String::new(),
         }
     }
 }
@@ -433,7 +433,7 @@ mod tests {
             pane_kind: PaneKind::Terminal,
             url: None,
             hotkeys: Vec::new(),
-            bg_color: None,
+            bg_color: String::new(),
         })
     }
 
@@ -624,7 +624,7 @@ mod tests {
                         pane_kind: PaneKind::Terminal,
                         url: None,
                         hotkeys: vec![],
-                        bg_color: None,
+                        bg_color: String::new(),
                     })),
                     b: Box::new(LayoutNode::Pane(PaneSpec {
                         id: b,
@@ -636,7 +636,7 @@ mod tests {
                         pane_kind: PaneKind::Terminal,
                         url: None,
                         hotkeys: vec![],
-                        bg_color: None,
+                        bg_color: String::new(),
                     })),
                 },
             }],

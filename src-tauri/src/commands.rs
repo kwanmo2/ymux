@@ -81,7 +81,10 @@ pub fn load_bootstrap(state: State<'_, AppState>) -> YmuxResult<BootstrapPayload
             );
         }
     }
-    eprintln!("[load_bootstrap] config_path={}", state.config.path().display());
+    eprintln!(
+        "[load_bootstrap] config_path={}",
+        state.config.path().display()
+    );
     // Also dump TOML content to verify bg_color is on disk
     if let Ok(raw) = std::fs::read_to_string(state.config.path()) {
         for line in raw.lines() {
@@ -125,8 +128,11 @@ pub fn save_config(state: State<'_, AppState>, config: Config) -> YmuxResult<()>
     // DEBUG: log bg_color values in incoming config
     for ws in &incoming.workspaces {
         for pane in ws.panes() {
-            if pane.bg_color.is_some() {
-                eprintln!("[save_config] pane {} has bg_color={:?}", pane.id, pane.bg_color);
+            if !pane.bg_color.is_empty() {
+                eprintln!(
+                    "[save_config] pane {} has bg_color={}",
+                    pane.id, pane.bg_color
+                );
             }
         }
     }
@@ -154,7 +160,7 @@ pub fn spawn_pane(state: State<'_, AppState>, args: SpawnArgs) -> YmuxResult<Spa
         pane_kind: crate::config::model::PaneKind::Terminal,
         url: None,
         hotkeys: Vec::new(),
-        bg_color: None,
+        bg_color: String::new(),
     };
 
     state.pty.spawn(

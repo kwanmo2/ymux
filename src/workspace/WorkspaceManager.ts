@@ -264,7 +264,7 @@ export class WorkspaceManager {
       },
       onBgColorChange: (color) => {
         this.updatePaneSpec(spec.id, (p) => {
-          p.bg_color = color;
+          p.bg_color = color ?? "";
         });
         // DEBUG: verify the write-back worked
         const check = this.getPaneSpec(spec.id);
@@ -613,7 +613,7 @@ function findAndMutatePane(
         pane_kind: root.pane_kind ?? "terminal",
         url: root.url ?? null,
         hotkeys: root.hotkeys ?? [],
-        bg_color: root.bg_color ?? null,
+        bg_color: root.bg_color ?? "",
       };
       patch(snapshot);
       root.title = snapshot.title;
