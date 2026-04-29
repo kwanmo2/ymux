@@ -37,6 +37,12 @@
       "icons/icon.ico",
       "icons/icon.png"
     ],
+    "externalBin": [
+      "binaries/ymon",
+      "binaries/ydir",
+      "binaries/ycode",
+      "binaries/y"
+    ],
     "windows": {
       "webviewInstallMode": {
         "type": "embedBootstrapper"

@@ -13,6 +13,7 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 src-tauri/WixTools/
+src-tauri/binaries/
 
 # IDE
 .vscode/
