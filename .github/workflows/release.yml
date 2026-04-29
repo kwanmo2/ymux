@@ -57,8 +57,11 @@ jobs:
       - name: cargo clippy (ymux lib, no tauri runtime)
         run: cargo clippy --no-default-features --lib --tests -p ymux -- -D warnings
 
-      - name: cargo test (workspace)
-        run: cargo test --workspace
+      - name: cargo test (tools + shared crates)
+        run: cargo test -p ytheme -p yipc -p ymon -p ydir -p ycode -p ylauncher
+
+      - name: cargo test (ymux lib, no tauri runtime)
+        run: cargo test --no-default-features --lib -p ymux
 
       # Install the Tauri 2 system dependencies on Linux so we can `cargo
       # check` the `ymux` binary with `--features desktop` enabled. This
