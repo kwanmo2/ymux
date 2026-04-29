@@ -47,20 +47,18 @@ jobs:
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
 
-      - name: cargo fmt
-        working-directory: src-tauri
-        run: cargo fmt --check
+      - name: cargo fmt (workspace)
+        run: cargo fmt --all --check
 
-      - name: cargo clippy (lib + tests, no tauri runtime)
-        working-directory: src-tauri
-        run: cargo clippy --no-default-features --lib --tests -- -D warnings
+      - name: cargo clippy (workspace, no tauri deps)
+        run: cargo clippy -p ytheme -p yipc -p ymon -p ydir -p ycode -p ylauncher -- -D warnings
 
-      - name: cargo test (lib, no tauri runtime)
-        working-directory: src-tauri
-        run: cargo test --no-default-features --lib
+      - name: cargo clippy (ymux lib, no tauri runtime)
+        run: cargo clippy --no-default-features --lib --tests -p ymux -- -D warnings
+
+      - name: cargo test (workspace)
+        run: cargo test --workspace
 
       # Install the Tauri 2 system dependencies on Linux so we can `cargo
       # check` the `ymux` binary with `--features desktop` enabled. This
@@ -78,8 +76,7 @@ jobs:
             pkg-config
 
       - name: cargo check --bin (with desktop feature)
-        working-directory: src-tauri
-        run: cargo check --features desktop --bin ymux
+        run: cargo check --features desktop --bin ymux -p ymux
 
   build-windows:
     name: Build (windows, tauri)

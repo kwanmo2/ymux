@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.7.0-7fdbca?style=flat-square" alt="version 0.7.0" />
+  <img src="https://img.shields.io/badge/version-0.8.0-7fdbca?style=flat-square" alt="version 0.7.0" />
 </p>
 
 <p align="center">
@@ -67,7 +67,24 @@ Bash / WSL), and numbered workspaces that each remember their own layout.
   a terminal opens it in your default browser.
 - **Keyboard shortcut reference**: press `?` in the top-right corner of the
   toolbar for a built-in cheat sheet. Supports English, 한국어, and 日本語.
+- **Command palette**: `Ctrl+Shift+P` opens a VS Code-style searchable
+  command overlay. Fuzzy-match any built-in action by name or keybinding.
+- **Native browser pane**: an alternative to the iframe-based browser pane
+  that uses a real Tauri WebviewWindow. Bypasses `X-Frame-Options` / CSP
+  restrictions, so any site loads — select `native_browser` pane type.
 - **Lightweight**: Tauri binary + WebView2. Installer target < 10 MB.
+
+### Companion TUI tools
+
+Standalone binaries that run inside any ymux terminal pane. Install them
+alongside ymux or use the `y` launcher (`y mon`, `y dir`, `y code`).
+
+| Tool | Command | Description |
+|------|---------|-------------|
+| **ymon** | `ymon` | htop/btop-style system monitor (CPU, memory, disk, processes) |
+| **ydir** | `ydir` | mdir / Midnight Commander dual-pane file manager |
+| **ycode** | `ycode <file>` | VS Code-style TUI code editor with undo/redo and search |
+| **y** | `y help` | Launcher that lists and dispatches all y* tools |
 
 ## Development
 
@@ -98,6 +115,7 @@ close.
 | `Ctrl+Shift+W`              | Close focused pane                   |
 | `Ctrl+Shift+Z`              | Zoom / unzoom focused pane           |
 | `Ctrl+Shift+R`              | Rename focused pane                  |
+| `Ctrl+Shift+P`              | Open command palette                 |
 | `Ctrl+F`                    | Search terminal scrollback           |
 | `Ctrl+Tab`                  | Focus next pane                      |
 | `Ctrl+Shift+Tab`            | Focus previous pane                  |

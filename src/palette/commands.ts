@@ -52,19 +52,19 @@ export function builtinCommands(manager: WorkspaceManager): CommandDef[] {
     },
     {
       id: "pane.focusNext",
-      label: () => t("shortcut.focusNext"),
+      label: () => t("shortcut.nextPane"),
       keybinding: "Ctrl+Tab",
       action: () => manager.cycleFocus(1),
     },
     {
       id: "pane.focusPrev",
-      label: () => t("shortcut.focusPrev"),
+      label: () => t("shortcut.prevPane"),
       keybinding: "Ctrl+Shift+Tab",
       action: () => manager.cycleFocus(-1),
     },
     ...Array.from({ length: 9 }, (_, i) => ({
       id: `workspace.${i + 1}`,
-      label: () => `${t("shortcut.workspace")} ${i + 1}`,
+      label: () => `${t("shortcut.switchWs")} ${i + 1}`,
       keybinding: `Ctrl+Alt+${i + 1}`,
       action: () => void manager.activate(i + 1),
     })),
