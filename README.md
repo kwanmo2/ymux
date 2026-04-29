@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.8.1-7fdbca?style=flat-square" alt="version 0.7.0" />
+  <img src="https://img.shields.io/badge/version-0.8.2-7fdbca?style=flat-square" alt="version 0.7.0" />
 </p>
 
 <p align="center">
@@ -70,9 +70,6 @@ Bash / WSL), and numbered workspaces that each remember their own layout.
   toolbar for a built-in cheat sheet. Supports English, 한국어, and 日本語.
 - **Command palette**: `Ctrl+Shift+P` opens a VS Code-style searchable
   command overlay. Fuzzy-match any built-in action by name or keybinding.
-- **Native browser pane**: an alternative to the iframe-based browser pane
-  that uses a real Tauri WebviewWindow. Bypasses `X-Frame-Options` / CSP
-  restrictions, so any site loads — select `native_browser` pane type.
 - **Lightweight**: Tauri binary + WebView2. Installer target < 10 MB.
 
 ### Companion TUI tools
