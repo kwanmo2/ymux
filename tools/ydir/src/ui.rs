@@ -26,9 +26,16 @@ fn draw_panel(frame: &mut Frame, panel: &Panel, area: Rect, active: bool) {
         Style::default().fg(Color::Rgb(0x1e, 0x2a, 0x38))
     };
 
-    let title = format!(" {} ", panel.cwd.display());
+    let cwd_display = panel.cwd.display().to_string();
+    let max_title = (area.width as usize).saturating_sub(4);
+    let title_text = if cwd_display.len() > max_title {
+        format!(" ...{} ", &cwd_display[cwd_display.len() - max_title + 3..])
+    } else {
+        format!(" {} ", cwd_display)
+    };
+
     let block = Block::default()
-        .title(title)
+        .title(title_text)
         .title_style(if active {
             Style::default().fg(Color::Rgb(0x7f, 0xdb, 0xca)).bold()
         } else {
@@ -47,40 +54,49 @@ fn draw_panel(frame: &mut Frame, panel: &Panel, area: Rect, active: bool) {
         return;
     }
 
+    let w = inner.width as usize;
+    let size_w = 10;
+    let date_w = 16;
+    let name_w = w.saturating_sub(size_w + date_w + 2); // 2 for spacing
+
     // Header
-    let header_area = Rect {
-        x: inner.x,
-        y: inner.y,
-        width: inner.width,
-        height: 1,
-    };
+    if inner.height >= 2 {
+        let header_area = Rect {
+            x: inner.x,
+            y: inner.y,
+            width: inner.width,
+            height: 1,
+        };
+        let hdr = Line::from(vec![
+            Span::styled(
+                pad(name_w, "Name"),
+                Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a)),
+            ),
+            Span::styled(" ", Style::default()),
+            Span::styled(
+                pad(size_w, "Size"),
+                Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a)),
+            ),
+            Span::styled(" ", Style::default()),
+            Span::styled(
+                pad(date_w, "Modified"),
+                Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a)),
+            ),
+        ]);
+        frame.render_widget(Paragraph::new(hdr), header_area);
+    }
+
+    let list_y = inner.y + 1;
+    let list_h = inner.height.saturating_sub(1) as usize;
     let list_area = Rect {
         x: inner.x,
-        y: inner.y + 1,
+        y: list_y,
         width: inner.width,
-        height: inner.height.saturating_sub(1),
+        height: list_h as u16,
     };
 
-    let header = Paragraph::new(Line::from(vec![
-        Span::styled(
-            pad_right("Name", inner.width as usize / 2),
-            Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a)),
-        ),
-        Span::styled(
-            pad_right("Size", 10),
-            Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a)),
-        ),
-        Span::styled(
-            "Modified",
-            Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a)),
-        ),
-    ]));
-    frame.render_widget(header, header_area);
-
-    // Scrolling: keep selected item visible
-    let visible_height = list_area.height as usize;
-    let scroll = if panel.selected >= visible_height {
-        panel.selected - visible_height + 1
+    let scroll = if panel.selected >= list_h {
+        panel.selected - list_h + 1
     } else {
         0
     };
@@ -89,20 +105,23 @@ fn draw_panel(frame: &mut Frame, panel: &Panel, area: Rect, active: bool) {
         .entries
         .iter()
         .skip(scroll)
-        .take(visible_height)
+        .take(list_h)
         .enumerate()
         .map(|(i, entry)| {
             let idx = i + scroll;
             let is_selected = idx == panel.selected;
 
-            let icon = if entry.is_dir { "\u{1F4C1} " } else { "   " };
-            let name_width = (inner.width as usize).saturating_sub(28);
-            let name = truncate(&entry.name, name_width);
-            let size = pad_right(&entry.size_display(), 10);
-            let date = entry
+            // Fixed-width ASCII prefix for dirs
+            let prefix = if entry.is_dir { "[D] " } else { "    " };
+            let prefix_w = 4;
+            let avail_name = name_w.saturating_sub(prefix_w);
+            let name_str = trunc(&entry.name, avail_name);
+            let name_col = format!("{}{}", prefix, pad(avail_name, &name_str));
+            let size_col = pad(size_w, &entry.size_display());
+            let date_col = entry
                 .modified
-                .map(|d| d.format("%Y-%m-%d %H:%M").to_string())
-                .unwrap_or_default();
+                .map(|d| d.format("%y-%m-%d %H:%M").to_string())
+                .unwrap_or_else(|| " ".repeat(date_w));
 
             let style = if is_selected && active {
                 Style::default()
@@ -119,37 +138,30 @@ fn draw_panel(frame: &mut Frame, panel: &Panel, area: Rect, active: bool) {
                 Style::default().fg(Color::Rgb(0xd6, 0xde, 0xeb))
             };
 
-            let line = Line::from(vec![
-                Span::raw(icon),
-                Span::raw(pad_right(&name, name_width)),
-                Span::raw(size),
-                Span::raw(date),
-            ]);
+            let line = Line::from(format!("{} {} {}", name_col, size_col, date_col));
             ListItem::new(line).style(style)
         })
         .collect();
 
-    let list = List::new(items);
-    frame.render_widget(list, list_area);
+    frame.render_widget(List::new(items), list_area);
 
-    // Scroll indicator
-    if panel.entries.len() > visible_height {
-        let pct = if panel.entries.len() <= 1 {
-            0
-        } else {
-            panel.selected * 100 / (panel.entries.len() - 1)
-        };
-        let indicator = format!(" {}% ", pct);
-        let ind_area = Rect {
-            x: area.x + area.width - indicator.len() as u16 - 1,
-            y: area.y,
-            width: indicator.len() as u16,
-            height: 1,
-        };
-        frame.render_widget(
-            Paragraph::new(indicator).style(Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a))),
-            ind_area,
-        );
+    // Scroll info
+    if panel.entries.len() > list_h {
+        let pct = panel.selected * 100 / panel.entries.len().max(1);
+        let info = format!("{}/{} {}%", panel.selected + 1, panel.entries.len(), pct);
+        let info_w = info.len() as u16;
+        if area.width > info_w + 2 {
+            let info_area = Rect {
+                x: area.x + area.width - info_w - 2,
+                y: area.y + area.height - 1,
+                width: info_w + 1,
+                height: 1,
+            };
+            frame.render_widget(
+                Paragraph::new(info).style(Style::default().fg(Color::Rgb(0x6a, 0x7a, 0x8a))),
+                info_area,
+            );
+        }
     }
 }
 
@@ -158,8 +170,6 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     let text = Line::from(vec![
         Span::styled("q", Style::default().fg(Color::Rgb(0x7f, 0xdb, 0xca))),
         Span::raw(" Quit  "),
-        Span::styled("Tab", Style::default().fg(Color::Rgb(0x7f, 0xdb, 0xca))),
-        Span::raw(" Switch  "),
         Span::styled("Enter", Style::default().fg(Color::Rgb(0x7f, 0xdb, 0xca))),
         Span::raw(" Open  "),
         Span::styled("BS", Style::default().fg(Color::Rgb(0x7f, 0xdb, 0xca))),
@@ -168,24 +178,37 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         Span::raw(" Hidden  "),
         Span::styled("c/m/p/d", Style::default().fg(Color::Rgb(0x7f, 0xdb, 0xca))),
         Span::raw(" Copy/Move/Paste/Del  "),
+        Span::styled("Tab", Style::default().fg(Color::Rgb(0x7f, 0xdb, 0xca))),
+        Span::raw(" Switch  "),
         Span::styled(status, Style::default().fg(Color::Rgb(0xe5, 0xc0, 0x7b))),
     ]);
     frame.render_widget(Paragraph::new(text), area);
 }
 
-fn pad_right(s: &str, width: usize) -> String {
-    if s.len() >= width {
-        s[..width].to_string()
+/// Pad or truncate `s` to exactly `width` characters.
+fn pad(width: usize, s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() >= width {
+        chars[..width].iter().collect()
     } else {
-        format!("{:width$}", s, width = width)
+        let mut out: String = chars.into_iter().collect();
+        for _ in 0..width - out.chars().count() {
+            out.push(' ');
+        }
+        out
     }
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
+/// Truncate with ~ if too long.
+fn trunc(s: &str, max: usize) -> String {
+    if max == 0 {
+        return String::new();
+    }
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() <= max {
         s.to_string()
     } else {
-        let truncated: String = s.chars().take(max.saturating_sub(1)).collect();
+        let truncated: String = chars[..max.saturating_sub(1)].iter().collect();
         format!("{}~", truncated)
     }
 }
