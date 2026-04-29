@@ -4,10 +4,13 @@
 //! polls the placeholder's screen position and calls `resize_webview` to keep
 //! the child window glued to the layout.
 //!
-//! NOTE: deliberately NOT using `WebviewWindowBuilder::parent` because on
-//! Windows that creates an owner-owned relationship that interferes with
-//! both manual repositioning and webview navigation. We manage child
-//! lifetime manually (closed in main.rs ExitRequested handler).
+//! IMPORTANT: window operations are dispatched to the main thread via
+//! `app.run_on_main_thread` and the commands return immediately. Calling
+//! `WebviewWindowBuilder::build()` (or `set_position` / `navigate`) directly
+//! from the Tauri command worker thread on Windows causes the IPC response
+//! to hang because internal main-thread dispatch waits for the window
+//! operation to complete, blocking the message pump from processing the
+//! IPC reply.
 
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 
@@ -22,33 +25,45 @@ pub fn create_webview(
     height: f64,
 ) -> Result<(), String> {
     let label = format!("browser-{}", id);
-    eprintln!("[webview] create {} url={} pos=({},{}) size=({}x{})", label, url, x, y, width, height);
-
+    eprintln!(
+        "[webview] create {} url={} pos=({},{}) size=({}x{})",
+        label, url, x, y, width, height
+    );
     let parsed_url: url::Url = url.parse().map_err(|e| format!("invalid URL: {e}"))?;
+    let app2 = app.clone();
+    let label2 = label.clone();
 
-    WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(parsed_url))
-        .title("ymux browser")
-        .inner_size(width, height)
-        .position(x, y)
-        .decorations(false)
-        .resizable(false)
-        .skip_taskbar(true)
-        .always_on_top(false)
-        .focused(false)
-        .build()
-        .map_err(|e| format!("create webview failed: {e}"))?;
+    app.run_on_main_thread(move || {
+        match WebviewWindowBuilder::new(&app2, &label2, WebviewUrl::External(parsed_url))
+            .title("ymux browser")
+            .inner_size(width, height)
+            .position(x, y)
+            .decorations(false)
+            .resizable(false)
+            .skip_taskbar(true)
+            .always_on_top(false)
+            .focused(false)
+            .build()
+        {
+            Ok(_) => eprintln!("[webview] {} created on main thread", label2),
+            Err(e) => eprintln!("[webview] {} create FAILED: {}", label2, e),
+        }
+    })
+    .map_err(|e| format!("dispatch failed: {e}"))?;
 
-    eprintln!("[webview] {} created", label);
     Ok(())
 }
 
 #[tauri::command]
 pub fn destroy_webview(app: AppHandle, id: String) -> Result<(), String> {
     let label = format!("browser-{}", id);
-    eprintln!("[webview] destroy {}", label);
-    if let Some(win) = app.get_webview_window(&label) {
-        win.close().map_err(|e| format!("close failed: {e}"))?;
-    }
+    let app2 = app.clone();
+    app.run_on_main_thread(move || {
+        if let Some(win) = app2.get_webview_window(&label) {
+            let _ = win.close();
+        }
+    })
+    .map_err(|e| format!("dispatch failed: {e}"))?;
     Ok(())
 }
 
@@ -56,32 +71,27 @@ pub fn destroy_webview(app: AppHandle, id: String) -> Result<(), String> {
 pub fn navigate_webview(app: AppHandle, id: String, url: String) -> Result<(), String> {
     let label = format!("browser-{}", id);
     eprintln!("[webview] navigate {} -> {}", label, url);
-
-    let win = app
-        .get_webview_window(&label)
-        .ok_or_else(|| format!("webview '{label}' not found"))?;
-
     let parsed: url::Url = url.parse().map_err(|e| format!("invalid URL: {e}"))?;
-
-    // Try navigate() first.
-    match win.navigate(parsed) {
-        Ok(_) => {
-            eprintln!("[webview] {} navigate() OK", label);
-        }
-        Err(e) => {
-            eprintln!("[webview] {} navigate() failed: {} — trying eval fallback", label, e);
-        }
-    }
-
-    // ALSO call eval() as a fallback — some Tauri/WebView2 combinations
-    // ignore navigate() but accept window.location assignment from JS.
     let escaped = url.replace('\\', "\\\\").replace('"', "\\\"");
-    let js = format!("window.location.href = \"{}\";", escaped);
-    if let Err(e) = win.eval(&js) {
-        eprintln!("[webview] {} eval fallback failed: {}", label, e);
-    } else {
-        eprintln!("[webview] {} eval fallback OK", label);
-    }
+    let app2 = app.clone();
+    let label2 = label.clone();
+
+    app.run_on_main_thread(move || {
+        if let Some(win) = app2.get_webview_window(&label2) {
+            match win.navigate(parsed) {
+                Ok(_) => eprintln!("[webview] {} navigate() OK", label2),
+                Err(e) => eprintln!("[webview] {} navigate() failed: {}", label2, e),
+            }
+            // Eval fallback for cases where navigate() is silently a no-op.
+            let js = format!("window.location.href = \"{}\";", escaped);
+            if let Err(e) = win.eval(&js) {
+                eprintln!("[webview] {} eval fallback failed: {}", label2, e);
+            }
+        } else {
+            eprintln!("[webview] navigate: '{}' not found", label2);
+        }
+    })
+    .map_err(|e| format!("dispatch failed: {e}"))?;
 
     Ok(())
 }
@@ -96,13 +106,17 @@ pub fn resize_webview(
     height: f64,
 ) -> Result<(), String> {
     let label = format!("browser-{}", id);
-    let win = app
-        .get_webview_window(&label)
-        .ok_or_else(|| format!("webview '{label}' not found"))?;
+    let app2 = app.clone();
 
-    win.set_position(PhysicalPosition::new(x as i32, y as i32))
-        .map_err(|e| format!("set_position failed: {e}"))?;
-    win.set_size(PhysicalSize::new(width.max(1.0) as u32, height.max(1.0) as u32))
-        .map_err(|e| format!("set_size failed: {e}"))?;
+    app.run_on_main_thread(move || {
+        if let Some(win) = app2.get_webview_window(&label) {
+            let _ = win.set_position(PhysicalPosition::new(x as i32, y as i32));
+            let _ = win.set_size(PhysicalSize::new(
+                width.max(1.0) as u32,
+                height.max(1.0) as u32,
+            ));
+        }
+    })
+    .map_err(|e| format!("dispatch failed: {e}"))?;
     Ok(())
 }
