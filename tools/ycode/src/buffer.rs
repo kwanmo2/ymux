@@ -55,7 +55,15 @@ impl Buffer {
     }
 
     pub fn line_len(&self, row: usize) -> usize {
-        self.lines.get(row).map(|s| s.len()).unwrap_or(0)
+        self.lines.get(row).map(|s| s.chars().count()).unwrap_or(0)
+    }
+
+    /// Convert a char-based column index to a byte offset in the string.
+    fn char_to_byte(s: &str, char_col: usize) -> usize {
+        s.char_indices()
+            .nth(char_col)
+            .map(|(byte_idx, _)| byte_idx)
+            .unwrap_or(s.len())
     }
 
     fn save_undo(&mut self, cursor_row: usize, cursor_col: usize) {
@@ -73,8 +81,8 @@ impl Buffer {
     pub fn insert_char(&mut self, row: usize, col: usize, c: char) {
         self.save_undo(row, col);
         if row < self.lines.len() {
-            let col = col.min(self.lines[row].len());
-            self.lines[row].insert(col, c);
+            let byte_pos = Self::char_to_byte(&self.lines[row], col);
+            self.lines[row].insert(byte_pos, c);
         }
         self.dirty = true;
     }
@@ -82,9 +90,9 @@ impl Buffer {
     pub fn insert_newline(&mut self, row: usize, col: usize) {
         self.save_undo(row, col);
         if row < self.lines.len() {
-            let col = col.min(self.lines[row].len());
-            let rest = self.lines[row][col..].to_string();
-            self.lines[row].truncate(col);
+            let byte_pos = Self::char_to_byte(&self.lines[row], col);
+            let rest = self.lines[row][byte_pos..].to_string();
+            self.lines[row].truncate(byte_pos);
             self.lines.insert(row + 1, rest);
         }
         self.dirty = true;
@@ -93,16 +101,17 @@ impl Buffer {
     pub fn backspace(&mut self, row: usize, col: usize) -> (usize, usize) {
         self.save_undo(row, col);
         if col > 0 && row < self.lines.len() {
-            let col = col.min(self.lines[row].len());
-            self.lines[row].remove(col - 1);
+            let byte_pos = Self::char_to_byte(&self.lines[row], col);
+            let prev_byte = Self::char_to_byte(&self.lines[row], col - 1);
+            self.lines[row].drain(prev_byte..byte_pos);
             self.dirty = true;
             (row, col - 1)
         } else if row > 0 {
-            let prev_len = self.lines[row - 1].len();
+            let prev_char_len = self.lines[row - 1].chars().count();
             let current = self.lines.remove(row);
             self.lines[row - 1].push_str(&current);
             self.dirty = true;
-            (row - 1, prev_len)
+            (row - 1, prev_char_len)
         } else {
             (row, col)
         }
@@ -110,10 +119,13 @@ impl Buffer {
 
     pub fn delete_char(&mut self, row: usize, col: usize) {
         self.save_undo(row, col);
-        if row < self.lines.len() && col < self.lines[row].len() {
-            self.lines[row].remove(col);
+        let char_len = self.line_len(row);
+        if row < self.lines.len() && col < char_len {
+            let byte_start = Self::char_to_byte(&self.lines[row], col);
+            let byte_end = Self::char_to_byte(&self.lines[row], col + 1);
+            self.lines[row].drain(byte_start..byte_end);
             self.dirty = true;
-        } else if row < self.lines.len() - 1 && col >= self.lines[row].len() {
+        } else if row < self.lines.len() - 1 && col >= char_len {
             let next = self.lines.remove(row + 1);
             self.lines[row].push_str(&next);
             self.dirty = true;
@@ -123,8 +135,8 @@ impl Buffer {
     pub fn insert_tab(&mut self, row: usize, col: usize) {
         self.save_undo(row, col);
         if row < self.lines.len() {
-            let col = col.min(self.lines[row].len());
-            self.lines[row].insert_str(col, "    ");
+            let byte_pos = Self::char_to_byte(&self.lines[row], col);
+            self.lines[row].insert_str(byte_pos, "    ");
         }
         self.dirty = true;
     }
@@ -289,5 +301,44 @@ mod tests {
         let text = "line1\nline2\nline3";
         let buf = Buffer::from_text(text);
         assert_eq!(buf.content(), text);
+    }
+
+    #[test]
+    fn multibyte_insert() {
+        let mut buf = Buffer::from_text("안녕");
+        assert_eq!(buf.line_len(0), 2); // 2 chars, not 6 bytes
+        buf.insert_char(0, 1, '하');
+        assert_eq!(buf.line(0), "안하녕");
+    }
+
+    #[test]
+    fn multibyte_backspace() {
+        let mut buf = Buffer::from_text("안녕하세요");
+        let (r, c) = buf.backspace(0, 3);
+        assert_eq!((r, c), (0, 2));
+        assert_eq!(buf.line(0), "안녕세요");
+    }
+
+    #[test]
+    fn multibyte_delete() {
+        let mut buf = Buffer::from_text("안녕하세요");
+        buf.delete_char(0, 1);
+        assert_eq!(buf.line(0), "안하세요");
+    }
+
+    #[test]
+    fn multibyte_newline() {
+        let mut buf = Buffer::from_text("안녕하세요");
+        buf.insert_newline(0, 2);
+        assert_eq!(buf.line(0), "안녕");
+        assert_eq!(buf.line(1), "하세요");
+    }
+
+    #[test]
+    fn mixed_ascii_and_korean() {
+        let mut buf = Buffer::from_text("hello안녕");
+        assert_eq!(buf.line_len(0), 7); // 5 ASCII + 2 Korean = 7 chars
+        buf.insert_char(0, 5, ' ');
+        assert_eq!(buf.line(0), "hello 안녕");
     }
 }
