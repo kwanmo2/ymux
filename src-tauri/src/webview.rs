@@ -22,7 +22,7 @@ pub fn create_webview(
     let label = format!("browser-{}", id);
 
     let main_window = app
-        .get_webview_window("main")
+        .get_window("main")
         .ok_or_else(|| "main window not found".to_string())?;
 
     let parsed_url: url::Url = url.parse().map_err(|e| format!("invalid URL: {e}"))?;
