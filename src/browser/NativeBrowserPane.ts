@@ -149,15 +149,26 @@ export class NativeBrowserPane implements Pane {
       ? normalizeUrl(this.url) ?? "https://www.bing.com"
       : "https://www.bing.com";
 
-    // Cache the scale factor — it's stable for the lifetime of the window
-    // and we don't want to do an IPC roundtrip every poll tick.
     const win = getCurrentWindow();
-    this.cachedScale = await win.scaleFactor();
+    try {
+      this.cachedScale = await win.scaleFactor();
+      this.setStatus(`scale=${this.cachedScale}`);
+    } catch (e) {
+      this.setStatus(`scaleFactor FAILED: ${e}`);
+      throw e;
+    }
 
-    const rect = await this.getScreenRect();
+    let rect: { x: number; y: number; width: number; height: number };
+    try {
+      rect = await this.getScreenRect();
+      this.setStatus(`rect=${rect.x},${rect.y} ${rect.width}x${rect.height}`);
+    } catch (e) {
+      this.setStatus(`getScreenRect FAILED: ${e}`);
+      throw e;
+    }
+
     if (rect.width <= 1 || rect.height <= 1) {
-      // DOM not measured yet — defer spawn until placeholder has size.
-      this.setStatus(`waiting for layout (rect ${rect.width}x${rect.height})…`);
+      this.setStatus(`waiting for layout…`);
       await new Promise<void>((resolve) => {
         const ro = new ResizeObserver(() => {
           const r = this.placeholder.getBoundingClientRect();
@@ -167,27 +178,32 @@ export class NativeBrowserPane implements Pane {
           }
         });
         ro.observe(this.placeholder);
-        // Also resolve after a max wait so we don't hang.
         setTimeout(() => {
           ro.disconnect();
           resolve();
         }, 2000);
       });
+      rect = await this.getScreenRect();
+      this.setStatus(`rect2=${rect.x},${rect.y} ${rect.width}x${rect.height}`);
     }
 
-    const finalRect = await this.getScreenRect();
-    try {
-      await api.createWebview(this.id, initial, finalRect.x, finalRect.y, finalRect.width, finalRect.height);
-      this.spawned = true;
-      this.urlInput.value = initial;
-      this.urlInput.disabled = false;
-      this.pushHistory(initial);
-      this.setStatus(`spawned ✓ ${finalRect.x},${finalRect.y} ${finalRect.width}x${finalRect.height}`);
-    } catch (e) {
-      this.spawned = false;
-      this.setStatus(`spawn FAILED: ${e}`);
-      throw e;
-    }
+    // Fire-and-forget the createWebview IPC. Awaiting it can hang if the
+    // newly-created webview steals focus from the main window — WebView2
+    // throttles JS in unfocused webviews, so the await never resolves.
+    this.setStatus(`calling createWebview…`);
+    api.createWebview(this.id, initial, rect.x, rect.y, rect.width, rect.height).then(
+      () => {
+        this.spawned = true;
+        this.urlInput.value = initial;
+        this.urlInput.disabled = false;
+        this.pushHistory(initial);
+        this.setStatus(`spawned ✓`);
+      },
+      (e) => {
+        this.spawned = false;
+        this.setStatus(`spawn FAILED: ${e}`);
+      },
+    );
 
     // Poll the main window position every ~33ms to keep the child window
     // glued to the placeholder. Tauri's onMoved event only fires AFTER

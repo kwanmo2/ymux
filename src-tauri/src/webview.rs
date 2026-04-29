@@ -34,6 +34,7 @@ pub fn create_webview(
         .resizable(false)
         .skip_taskbar(true)
         .always_on_top(false)
+        .focused(false)
         .build()
         .map_err(|e| format!("create webview failed: {e}"))?;
 
