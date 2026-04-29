@@ -376,7 +376,7 @@ export class WorkspaceManager {
       cwd: null,
       startup_cmd: null,
       env: [],
-      pane_kind: "native_browser",
+      pane_kind: "browser",
       url: url || null,
       hotkeys: [],
     };
