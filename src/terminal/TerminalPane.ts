@@ -124,8 +124,15 @@ export class TerminalPane implements Pane {
       if (ev.type !== "keydown") return true;
       if (ev.ctrlKey && !ev.altKey) {
         const k = ev.key.toLowerCase();
+        // Ctrl+V → paste clipboard text into the PTY instead of
+        // letting xterm send the raw 0x16 byte.
+        if (!ev.shiftKey && k === "v") {
+          ev.preventDefault();
+          void this.pasteClipboard();
+          return false;
+        }
         if (!ev.shiftKey && k === "f") return false;
-        if (ev.shiftKey && (k === "h" || k === "v" || k === "w" || k === "z" || k === "r")) return false;
+        if (ev.shiftKey && (k === "h" || k === "v" || k === "w" || k === "z" || k === "r" || k === "p")) return false;
         if (k === "tab") return false;
       }
       if (ev.ctrlKey && ev.altKey && /^Digit[1-9]$/.test(ev.code)) return false;
@@ -351,6 +358,17 @@ export class TerminalPane implements Pane {
         // fit throws when the element has zero size; ignore.
       }
     });
+  }
+
+  private async pasteClipboard(): Promise<void> {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && this.spawned) {
+        void api.writePane(this.id, ENCODER.encode(text));
+      }
+    } catch {
+      // Clipboard access denied or empty — silent fail.
+    }
   }
 
   private currentDims(): { cols: number; rows: number } {
