@@ -79,16 +79,28 @@ export function mountWorkspaceBar(
   bar.appendChild(browserBtn);
 
   const kofiBtn = document.createElement("button");
-  kofiBtn.className = "workspace-bar__kofi";
+  kofiBtn.className = "workspace-bar__icon-btn";
   kofiBtn.type = "button";
-  kofiBtn.textContent = "☕ Support";
-  kofiBtn.title = t("workspace.supportTitle");
+  kofiBtn.textContent = "☕";
+  kofiBtn.title = "Support on Ko-fi";
   kofiBtn.addEventListener("click", () => {
     void api.openUrl("https://ko-fi.com/youngminkim").catch((e) =>
       console.warn("openUrl failed:", e),
     );
   });
   bar.appendChild(kofiBtn);
+
+  const ghBtn = document.createElement("button");
+  ghBtn.className = "workspace-bar__icon-btn";
+  ghBtn.type = "button";
+  ghBtn.textContent = "🐙";
+  ghBtn.title = "GitHub";
+  ghBtn.addEventListener("click", () => {
+    void api.openUrl("https://github.com/youngmins/ymux").catch((e) =>
+      console.warn("openUrl failed:", e),
+    );
+  });
+  bar.appendChild(ghBtn);
 
   const cleanupHelp = mountHelpButton(bar);
 

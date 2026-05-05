@@ -690,23 +690,22 @@ body,
   border-color: var(--accent);
 }
 
-/* ── Ko-fi support button (workspace bar) ────────────────────────────────── */
+/* ── Toolbar icon buttons (Ko-fi, GitHub) ──────────────────────────────── */
 
-.workspace-bar__kofi {
+.workspace-bar__icon-btn {
   background: transparent;
   color: var(--fg-muted);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 20px;
   cursor: pointer;
-  white-space: nowrap;
   flex-shrink: 0;
 }
 
-.workspace-bar__kofi:hover {
-  color: #ff5e5b;
-  border-color: #ff5e5b;
+.workspace-bar__icon-btn:hover {
+  border-color: var(--accent);
 }
 
 /* ── Command Palette ─────────────────────────────────────────────────────── */
