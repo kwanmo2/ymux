@@ -57,6 +57,7 @@ pub async fn create_webview(
     let label2 = label.clone();
     tauri::async_runtime::spawn(async move {
         let _ = app_run.run_on_main_thread(move || {
+            #[cfg(target_os = "windows")]
             let main_win = app_builder.get_webview_window("main");
             let builder =
                 WebviewWindowBuilder::new(&app_builder, &label2, WebviewUrl::External(parsed_url))
@@ -72,6 +73,7 @@ pub async fn create_webview(
                 Some(ua) if !ua.is_empty() => builder.user_agent(ua),
                 _ => builder,
             };
+            #[cfg(target_os = "windows")]
             let builder = match main_win {
                 Some(ref w) => match builder.owner(w) {
                     Ok(b) => b,
