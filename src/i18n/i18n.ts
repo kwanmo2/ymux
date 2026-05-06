@@ -230,6 +230,16 @@ const strings: Translations = {
     de: "Vergrößern / wiederherstellen (Ctrl+Shift+Z)",
     vi: "Phóng to / thu nhỏ (Ctrl+Shift+Z)",
   },
+"browser.zoomIn": {
+    en: "Zoom in", ko: "확대", ja: "拡大", zh: "放大",
+    hi: "बड़ा करें", es: "Acercar", fr: "Agrandir", ar: "تكبير",
+    pt: "Ampliar", ru: "Увеличить", tr: "Yakınlaştır", de: "Vergrößern", vi: "Phóng to",
+  },
+  "browser.zoomOut": {
+    en: "Zoom out", ko: "축소", ja: "縮小", zh: "缩小",
+    hi: "छोटा करें", es: "Alejar", fr: "Réduire", ar: "تصغير",
+    pt: "Reduzir", ru: "Уменьшить", tr: "Uzaklaştır", de: "Verkleinern", vi: "Thu nhỏ",
+  },
   "browser.defaultTitle": {
     en: "browser", ko: "브라우저", ja: "ブラウザ", zh: "浏览器",
     hi: "ब्राउज़र", es: "navegador", fr: "navigateur", ar: "متصفح",
@@ -604,6 +614,58 @@ const strings: Translations = {
     tr: "Çalışma alanını yeniden adlandır (çift tıklama)",
     de: "Workspace umbenennen (Doppelklick)",
     vi: "Đổi tên workspace (nhấp đúp)",
+  },
+
+  // ── y Tools section in help overlay ─────────────────────────────
+  "help.toolsTitle": {
+    en: "y Tools", ko: "y 툴", ja: "y ツール", zh: "y 工具",
+    hi: "y टूल्स", es: "y Tools", fr: "y Outils", ar: "أدوات y",
+    pt: "y Tools", ru: "y Инструменты", tr: "y Araçlar", de: "y Tools", vi: "y Công cụ",
+  },
+  "help.toolY": {
+    en: "Tool launcher — open yDir, yMon, yCode, yGit and more",
+    ko: "툴 런처 — yDir, yMon, yCode, yGit 등 실행",
+    ja: "ツールランチャー — yDir, yMon, yCode, yGit などを起動",
+    zh: "工具启动器 — 打开 yDir、yMon、yCode、yGit 等",
+    hi: "टूल लॉन्चर — yDir, yMon, yCode, yGit आदि खोलें",
+    es: "Lanzador de herramientas — abre yDir, yMon, yCode, yGit y más",
+    fr: "Lanceur d'outils — ouvrir yDir, yMon, yCode, yGit et plus",
+    ar: "مشغّل الأدوات — فتح yDir وyMon وyCode وyGit والمزيد",
+    pt: "Lançador de ferramentas — abrir yDir, yMon, yCode, yGit e mais",
+    ru: "Лаунчер инструментов — открыть yDir, yMon, yCode, yGit и др.",
+    tr: "Araç başlatıcı — yDir, yMon, yCode, yGit ve daha fazlasını aç",
+    de: "Tool-Launcher — yDir, yMon, yCode, yGit und mehr öffnen",
+    vi: "Trình khởi chạy — mở yDir, yMon, yCode, yGit và hơn nữa",
+  },
+  "help.toolYDir": {
+    en: "File manager", ko: "파일 탐색기", ja: "ファイルマネージャ", zh: "文件管理器",
+    hi: "फ़ाइल प्रबंधक", es: "Gestor de archivos", fr: "Gestionnaire de fichiers", ar: "مدير الملفات",
+    pt: "Gerenciador de arquivos", ru: "Файловый менеджер", tr: "Dosya yöneticisi", de: "Dateimanager", vi: "Trình quản lý tệp",
+  },
+  "help.toolYMon": {
+    en: "System monitor (CPU, RAM, disk, network)",
+    ko: "시스템 모니터 (CPU, RAM, 디스크, 네트워크)",
+    ja: "システムモニター (CPU、RAM、ディスク、ネット)",
+    zh: "系统监视器 (CPU、RAM、磁盘、网络)",
+    hi: "सिस्टम मॉनिटर (CPU, RAM, डिस्क, नेटवर्क)",
+    es: "Monitor del sistema (CPU, RAM, disco, red)",
+    fr: "Moniteur système (CPU, RAM, disque, réseau)",
+    ar: "مراقب النظام (CPU وRAM والقرص والشبكة)",
+    pt: "Monitor do sistema (CPU, RAM, disco, rede)",
+    ru: "Системный монитор (ЦП, ОЗУ, диск, сеть)",
+    tr: "Sistem monitörü (CPU, RAM, disk, ağ)",
+    de: "Systemmonitor (CPU, RAM, Festplatte, Netzwerk)",
+    vi: "Giám sát hệ thống (CPU, RAM, đĩa, mạng)",
+  },
+  "help.toolYCode": {
+    en: "Code editor", ko: "코드 에디터", ja: "コードエディタ", zh: "代码编辑器",
+    hi: "कोड एडिटर", es: "Editor de código", fr: "Éditeur de code", ar: "محرر الكود",
+    pt: "Editor de código", ru: "Редактор кода", tr: "Kod editörü", de: "Code-Editor", vi: "Trình soạn thảo code",
+  },
+  "help.toolYGit": {
+    en: "Git log & branch viewer", ko: "Git 로그 & 브랜치 뷰어", ja: "Git ログ & ブランチビューア", zh: "Git 日志与分支查看器",
+    hi: "Git लॉग और शाखा व्यूअर", es: "Visor de log y ramas de Git", fr: "Visionneur de log & branches Git", ar: "عارض سجل Git والفروع",
+    pt: "Visualizador de log e branches Git", ru: "Просмотр лога и веток Git", tr: "Git log ve dal görüntüleyici", de: "Git-Log & Branch-Viewer", vi: "Trình xem log & nhánh Git",
   },
 
   // ── Main app ────────────────────────────────────────────────────

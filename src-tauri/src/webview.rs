@@ -14,8 +14,14 @@
 
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 
+// async so the IPC response is sent back to the frontend before
+// run_on_main_thread occupies the main thread with build(). When this
+// was a sync command, WebView2 needed the main thread to deliver the
+// IPC response, but build() was already holding it — causing the
+// "createWebview replied OK" message to never appear and blocking all
+// subsequent innerPosition() / resize polls.
 #[tauri::command]
-pub fn create_webview(
+pub async fn create_webview(
     app: AppHandle,
     id: String,
     url: String,
@@ -23,33 +29,53 @@ pub fn create_webview(
     y: f64,
     width: f64,
     height: f64,
+    user_agent: Option<String>,
 ) -> Result<(), String> {
     let label = format!("browser-{}", id);
     eprintln!(
-        "[webview] create {} url={} pos=({},{}) size=({}x{})",
-        label, url, x, y, width, height
+        "[webview] create {} url={} pos=({},{}) size=({}x{}) ua={}",
+        label, url, x, y, width, height,
+        user_agent.as_deref().map(|s| if s.is_empty() { "default" } else { "custom" }).unwrap_or("default"),
     );
     let parsed_url: url::Url = url.parse().map_err(|e| format!("invalid URL: {e}"))?;
-    let app2 = app.clone();
-    let label2 = label.clone();
+    let escaped = url.replace('\\', "\\\\").replace('"', "\\\"");
+    let init_js = format!(
+        "if (location.href === 'about:blank') {{ location.replace(\"{}\"); }}",
+        escaped
+    );
 
-    app.run_on_main_thread(move || {
-        match WebviewWindowBuilder::new(&app2, &label2, WebviewUrl::External(parsed_url))
-            .title("ymux browser")
-            .inner_size(width, height)
-            .position(x, y)
-            .decorations(false)
-            .resizable(false)
-            .skip_taskbar(true)
-            .always_on_top(false)
-            .focused(false)
-            .build()
-        {
-            Ok(_) => eprintln!("[webview] {} created on main thread", label2),
-            Err(e) => eprintln!("[webview] {} create FAILED: {}", label2, e),
-        }
-    })
-    .map_err(|e| format!("dispatch failed: {e}"))?;
+    let app_run = app.clone();
+    let app_builder = app.clone();
+    let label2 = label.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app_run.run_on_main_thread(move || {
+            let main_win = app_builder.get_webview_window("main");
+            let builder = WebviewWindowBuilder::new(&app_builder, &label2, WebviewUrl::External(parsed_url))
+                .title("ymux browser")
+                .inner_size(width, height)
+                .position(x, y)
+                .decorations(false)
+                .resizable(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .initialization_script(&init_js);
+            let builder = match user_agent.as_deref() {
+                Some(ua) if !ua.is_empty() => builder.user_agent(ua),
+                _ => builder,
+            };
+            let builder = match main_win {
+                Some(ref w) => match builder.owner(w) {
+                    Ok(b) => b,
+                    Err(e) => { eprintln!("[webview] {} owner() failed: {}", label2, e); return; }
+                },
+                None => builder,
+            };
+            match builder.build() {
+                Ok(_) => eprintln!("[webview] {} created on main thread", label2),
+                Err(e) => eprintln!("[webview] {} create FAILED: {}", label2, e),
+            }
+        });
+    });
 
     Ok(())
 }
@@ -93,6 +119,21 @@ pub fn navigate_webview(app: AppHandle, id: String, url: String) -> Result<(), S
     })
     .map_err(|e| format!("dispatch failed: {e}"))?;
 
+    Ok(())
+}
+
+#[tauri::command]
+pub fn zoom_webview(app: AppHandle, id: String, factor: f64) -> Result<(), String> {
+    let label = format!("browser-{}", id);
+    let factor = factor.clamp(0.1, 5.0);
+    let app2 = app.clone();
+    app.run_on_main_thread(move || {
+        if let Some(win) = app2.get_webview_window(&label) {
+            let js = format!("document.documentElement.style.zoom = '{}';", factor);
+            let _ = win.eval(&js);
+        }
+    })
+    .map_err(|e| format!("dispatch failed: {e}"))?;
     Ok(())
 }
 

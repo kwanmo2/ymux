@@ -16,7 +16,7 @@ import type {
 import { api } from "../ipc/bridge";
 import { TerminalPane } from "../terminal/TerminalPane";
 import { BrowserPane } from "../browser/BrowserPane";
-import { NativeBrowserPane } from "../browser/NativeBrowserPane";
+import { EmbeddedBrowserPane } from "../browser/EmbeddedBrowserPane";
 import type { Pane } from "../layout/Pane";
 import {
   findPane,
@@ -237,8 +237,8 @@ export class WorkspaceManager {
         },
       });
     }
-    if (spec.pane_kind === "native_browser") {
-      return new NativeBrowserPane({
+    if (spec.pane_kind === "native_browser" || spec.pane_kind === "embedded_browser") {
+      return new EmbeddedBrowserPane({
         spec,
         onFocus: () => {
           this.focusedPaneId = spec.id;
@@ -381,7 +381,7 @@ export class WorkspaceManager {
       cwd: null,
       startup_cmd: null,
       env: [],
-      pane_kind: "browser",
+      pane_kind: "embedded_browser",
       url: url || null,
       hotkeys: [],
     };

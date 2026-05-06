@@ -38,6 +38,10 @@ export class NativeBrowserPane implements Pane {
   private unlisteners: UnlistenFn[] = [];
   private history: string[] = [];
   private historyIndex = -1;
+  private zoomLevel = 1.0;
+  private zoomOutBtn!: HTMLButtonElement;
+  private zoomInBtn!: HTMLButtonElement;
+  private zoomLabel!: HTMLSpanElement;
 
   constructor(opts: NativeBrowserPaneOptions) {
     this.id = opts.spec.id;
@@ -77,10 +81,19 @@ export class NativeBrowserPane implements Pane {
       }
     });
 
+    this.zoomOutBtn = iconBtn("−", t("browser.zoomOut"), () => this.changeZoom(-0.1));
+    this.zoomLabel = document.createElement("span");
+    this.zoomLabel.className = "browser-pane__zoom";
+    this.zoomLabel.textContent = "100%";
+    this.zoomInBtn = iconBtn("+", t("browser.zoomIn"), () => this.changeZoom(0.1));
+
     nav.appendChild(this.backBtn);
     nav.appendChild(this.fwdBtn);
     nav.appendChild(this.reloadBtn);
     nav.appendChild(this.urlInput);
+    nav.appendChild(this.zoomOutBtn);
+    nav.appendChild(this.zoomLabel);
+    nav.appendChild(this.zoomInBtn);
     this.element.appendChild(nav);
 
     // Placeholder — the child window overlays this area
@@ -123,6 +136,8 @@ export class NativeBrowserPane implements Pane {
       this.backBtn.title = t("browser.back");
       this.fwdBtn.title = t("browser.forward");
       this.reloadBtn.title = t("browser.reload");
+      this.zoomOutBtn.title = t("browser.zoomOut");
+      this.zoomInBtn.title = t("browser.zoomIn");
     });
 
     this.setStatus(`constructed id=${this.id.slice(0, 8)}`);
@@ -203,24 +218,7 @@ export class NativeBrowserPane implements Pane {
       (e) => this.setStatus(`createWebview replied ERR: ${e}`),
     );
 
-    // Poll the main window position every ~33ms to keep the child window
-    // glued to the placeholder. Tauri's onMoved event only fires AFTER
-    // the user releases the title bar drag — too late for smooth tracking.
-    let lastKey = "";
-    let pollCount = 0;
-    this.posPollTimer = window.setInterval(() => {
-      if (!this.spawned) return;
-      pollCount++;
-      void this.getScreenRect().then((r) => {
-        const key = `${r.x},${r.y},${r.width},${r.height}`;
-        if (key === lastKey) return;
-        lastKey = key;
-        this.setStatus(`poll #${pollCount} → ${r.x},${r.y} ${r.width}x${r.height}`);
-        void api.resizeWebview(this.id, r.x, r.y, r.width, r.height).catch((e) => {
-          this.setStatus(`resize ERR: ${e}`);
-        });
-      });
-    }, 33);
+    this.startPollLoop();
   }
 
   focus(): void {
@@ -309,7 +307,35 @@ export class NativeBrowserPane implements Pane {
     this.historyIndex = this.history.length - 1;
   }
 
+  // ── Zoom & UA ────────────────────────────────────────────────────────
+
+  private changeZoom(delta: number): void {
+    if (!this.spawned) return;
+    this.zoomLevel = Math.max(0.3, Math.min(3.0, Math.round((this.zoomLevel + delta) * 10) / 10));
+    this.zoomLabel.textContent = `${Math.round(this.zoomLevel * 100)}%`;
+    void api.zoomWebview(this.id, this.zoomLevel).catch((e) => this.setStatus(`zoom ERR: ${e}`));
+  }
+
   // ── Positioning ─────────────────────────────────────────────────────
+
+  private startPollLoop(): void {
+    if (this.posPollTimer !== null) window.clearInterval(this.posPollTimer);
+    let lastKey = "";
+    let pollCount = 0;
+    this.posPollTimer = window.setInterval(() => {
+      if (!this.spawned) return;
+      pollCount++;
+      void this.getScreenRect().then((r) => {
+        const key = `${r.x},${r.y},${r.width},${r.height}`;
+        if (key === lastKey) return;
+        lastKey = key;
+        this.setStatus(`poll #${pollCount} → ${r.x},${r.y} ${r.width}x${r.height}`);
+        void api.resizeWebview(this.id, r.x, r.y, r.width, r.height).catch((e) => {
+          this.setStatus(`resize ERR: ${e}`);
+        });
+      });
+    }, 33);
+  }
 
   private scheduleReposition(): void {
     if (this.repositionRaf !== null) return;
@@ -343,8 +369,8 @@ export class NativeBrowserPane implements Pane {
     // physical, then offset by the window's content origin.
     const x = innerPos.x + Math.round(domRect.left * scale);
     const y = innerPos.y + Math.round(domRect.top * scale);
-    const width = Math.max(1, Math.round(domRect.width * scale));
-    const height = Math.max(1, Math.round(domRect.height * scale));
+    const width = Math.max(1, Math.floor(domRect.width * scale) - 1);
+    const height = Math.max(1, Math.floor(domRect.height * scale));
 
     return { x, y, width, height };
   }

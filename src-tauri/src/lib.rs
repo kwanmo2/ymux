@@ -27,6 +27,10 @@ pub mod updater;
 #[cfg(feature = "desktop")]
 pub mod webview;
 
+// Embedded browser child webview panes via Window::add_child (Tauri unstable).
+#[cfg(feature = "desktop")]
+pub mod embedded_browser;
+
 // System resource monitor (CPU, RAM, disk, network, GPU). Desktop-only
 // because it emits Tauri events.
 #[cfg(feature = "desktop")]

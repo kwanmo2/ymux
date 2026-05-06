@@ -19,6 +19,7 @@ const TOOLS = [
   { pkg: "ydir", bin: "ydir" },
   { pkg: "ycode", bin: "ycode" },
   { pkg: "ylauncher", bin: "y" },
+  { pkg: "ygit", bin: "ygit" },
 ];
 
 function run(cmd) {

@@ -12,7 +12,7 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "ymux=info,warn".into()),
+                .unwrap_or_else(|_| "ymux=info,ymux_lib=info,warn".into()),
         )
         .init();
 
@@ -29,6 +29,7 @@ fn main() {
         config,
         pty: PtyManager::default(),
     };
+    let eb_registry = ymux_lib::embedded_browser::EmbeddedBrowserRegistry::default();
 
     // `generate_handler!` requires the absolute path to each command so the
     // helper macros it expands into (`__cmd__<name>`) resolve through the
@@ -36,6 +37,7 @@ fn main() {
     // via `use` is not enough — macros are not re-exported by `use`.
     tauri::Builder::default()
         .manage(state)
+        .manage(eb_registry)
         .invoke_handler(tauri::generate_handler![
             ymux_lib::commands::load_bootstrap,
             ymux_lib::commands::detect_shells_cmd,
@@ -51,6 +53,11 @@ fn main() {
             ymux_lib::webview::destroy_webview,
             ymux_lib::webview::navigate_webview,
             ymux_lib::webview::resize_webview,
+            ymux_lib::webview::zoom_webview,
+            ymux_lib::embedded_browser::create_embedded_browser,
+            ymux_lib::embedded_browser::destroy_embedded_browser,
+            ymux_lib::embedded_browser::navigate_embedded_browser,
+            ymux_lib::embedded_browser::set_embedded_browser_bounds,
         ])
         .setup(|app| {
             let ipc_addr = start_ipc_server(app.handle().clone());
@@ -71,6 +78,18 @@ fn main() {
                 for (label, wv) in app_handle.webview_windows() {
                     if label.starts_with("browser-") {
                         let _ = wv.close();
+                    }
+                }
+                // Close embedded browser child webviews (eb-* labels).
+                // These are Webview instances, not WebviewWindows, so they
+                // don't appear in webview_windows() and need separate cleanup.
+                let registry = app_handle
+                    .state::<ymux_lib::embedded_browser::EmbeddedBrowserRegistry>();
+                if let Ok(labels) = registry.labels.lock() {
+                    for label in labels.iter() {
+                        if let Some(wv) = app_handle.get_webview(label) {
+                            let _ = wv.close();
+                        }
                     }
                 }
 

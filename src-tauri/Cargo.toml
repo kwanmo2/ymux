@@ -1,6 +1,6 @@
 [package]
 name = "ymux"
-version = "0.8.4"
+version = "0.8.5"
 description = "A lightweight tmux-inspired terminal multiplexer for Windows"
 edition = "2021"
 rust-version = "1.77"
@@ -37,7 +37,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # want to run the cross-platform unit tests can opt out with
 # `--no-default-features --lib --tests` to avoid pulling in the GTK/webkit2gtk
 # system libraries the Tauri crate needs on Linux.
-tauri = { version = "2", optional = true , features = [] }
+# SAFETY: Window::add_child is gated on the "unstable" feature; pinned to
+# =2.10.3 because the API may change in any 2.x minor without semver protection.
+tauri = { version = "=2.10.3", optional = true, features = ["unstable", "devtools"] }
 
 # Update checker: polls the GitHub releases API in a background thread. Kept
 # behind the `desktop` feature because the cross-platform test suite doesn't

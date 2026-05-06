@@ -32,7 +32,7 @@ export function newBrowserPane(url: string): PaneSpec {
     cwd: null,
     startup_cmd: null,
     env: [],
-    pane_kind: "browser",
+    pane_kind: "native_browser",
     url,
     hotkeys: [],
   };

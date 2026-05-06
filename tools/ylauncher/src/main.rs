@@ -14,6 +14,10 @@ const TOOLS: &[ToolDef] = &[
         name: "ycode",
         description: "Code editor (VS Code-style TUI)",
     },
+    ToolDef {
+        name: "ygit",
+        description: "Git log & branch viewer TUI",
+    },
 ];
 
 struct ToolDef {
@@ -82,6 +86,7 @@ fn print_help() {
     println!("    y mon           Launch system monitor");
     println!("    y dir           Launch file manager");
     println!("    y code file.rs  Open file in editor");
+    println!("    y git           Browse git log and branches");
 }
 
 fn find_tool(name: &str) -> Option<PathBuf> {

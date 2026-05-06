@@ -314,6 +314,7 @@ pub enum PaneKind {
     Terminal,
     Browser,
     NativeBrowser,
+    EmbeddedBrowser,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

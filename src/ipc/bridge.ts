@@ -114,7 +114,8 @@ export const api = {
     y: number,
     width: number,
     height: number,
-  ): Promise<void> => call("create_webview", { id, url, x, y, width, height }),
+    userAgent?: string,
+  ): Promise<void> => call("create_webview", { id, url, x, y, width, height, user_agent: userAgent ?? null }),
 
   /// Destroy (close) a native child webview.
   destroyWebview: (id: string): Promise<void> =>
@@ -124,6 +125,10 @@ export const api = {
   navigateWebview: (id: string, url: string): Promise<void> =>
     call("navigate_webview", { id, url }),
 
+  /// Set the CSS zoom level of a native child webview (1.0 = 100%).
+  zoomWebview: (id: string, factor: number): Promise<void> =>
+    call("zoom_webview", { id, factor }),
+
   /// Reposition and resize an existing native child webview.
   resizeWebview: (
     id: string,
@@ -132,6 +137,35 @@ export const api = {
     width: number,
     height: number,
   ): Promise<void> => call("resize_webview", { id, x, y, width, height }),
+
+  /// Create an embedded child webview (Window::add_child). Position and size
+  /// are in physical pixels relative to the main window's content area.
+  createEmbeddedBrowser: (
+    id: string,
+    url: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): Promise<void> => call("create_embedded_browser", { id, url, x, y, width, height }),
+
+  /// Destroy (close) an embedded child webview.
+  destroyEmbeddedBrowser: (id: string): Promise<void> =>
+    call("destroy_embedded_browser", { id }),
+
+  /// Navigate an embedded child webview to a new URL.
+  navigateEmbeddedBrowser: (id: string, url: string): Promise<void> =>
+    call("navigate_embedded_browser", { id, url }),
+
+  /// Reposition and resize an embedded child webview. Coordinates are in
+  /// physical pixels relative to the main window's content area.
+  setEmbeddedBrowserBounds: (
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): Promise<void> => call("set_embedded_browser_bounds", { id, x, y, width, height }),
 };
 
 /// Subscribe to PTY stdout for a single pane. Returns an unlisten handle.

@@ -7,5 +7,6 @@ members = [
     "tools/ydir",
     "tools/ycode",
     "tools/ylauncher",
+    "tools/ygit",
 ]
 resolver = "2"

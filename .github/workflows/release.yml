@@ -82,7 +82,7 @@ jobs:
         run: |
           mkdir -p src-tauri/binaries
           TRIPLE=$(rustc -vV | grep host | cut -d' ' -f2)
-          for tool in ymon ydir ycode y; do
+          for tool in ymon ydir ycode y ygit; do
             touch "src-tauri/binaries/${tool}-${TRIPLE}"
           done
 

@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.8.4-7fdbca?style=flat-square" alt="version 0.7.0" />
+  <img src="https://img.shields.io/badge/version-0.8.5-7fdbca?style=flat-square" alt="version 0.8.5" />
 </p>
 
 <p align="center">
@@ -78,20 +78,21 @@ Bash / WSL), and numbered workspaces that each remember their own layout.
   Français, العربية, Português, Русский, Türkçe, Deutsch, Tiếng Việt.
   Switch from the language selector in the bottom-right status bar.
 - **MSI installer with PATH**: the MSI adds the install directory to the
-  system PATH, so `ymux`, `ymon`, `ydir`, `ycode`, and `y` are immediately
+  system PATH, so `ymux`, `ymon`, `ydir`, `ycode`, `ygit`, and `y` are immediately
   available from any terminal after install.
 - **Lightweight**: Tauri binary + WebView2. Installer target < 10 MB.
 
 ### Companion TUI tools
 
 Standalone binaries that run inside any ymux terminal pane. Install them
-alongside ymux or use the `y` launcher (`y mon`, `y dir`, `y code`).
+alongside ymux or use the `y` launcher (`y mon`, `y dir`, `y code`, `y git`).
 
 | Tool | Command | Description |
 |------|---------|-------------|
 | **ymon** | `ymon` | htop/btop-style system monitor (CPU, memory, disk, processes) |
 | **ydir** | `ydir` | Dual-pane file manager — navigate, copy/move/delete, run executables with args dialog |
 | **ycode** | `ycode <file>` | TUI code editor — undo/redo, search, goto, Esc exit dialog, full CJK/emoji support |
+| **ygit** | `ygit` | Git log & branch viewer — colored commit graph, branch list, checkout |
 | **y** | `y help` | Launcher that lists and dispatches all y* tools |
 
 ## Development
