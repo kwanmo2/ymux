@@ -98,9 +98,8 @@ fn run(
                                     terminal.backend_mut().execute(LeaveAlternateScreen)?;
                                     terminal.show_cursor()?;
 
-                                    let status = std::process::Command::new("ycode")
-                                        .arg(&path)
-                                        .status();
+                                    let status =
+                                        std::process::Command::new("ycode").arg(&path).status();
                                     if let Err(e) = status {
                                         eprintln!("\nFailed to launch ycode: {}", e);
                                         eprintln!("Press Enter to return to yDir...");

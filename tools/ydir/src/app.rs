@@ -623,7 +623,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let bin = tmp.path().join("data.bin");
         fs::write(&bin, b"some\x00binary\x00data").unwrap();
-        assert!(super::is_binary_file(&bin), "should detect null bytes as binary");
+        assert!(
+            super::is_binary_file(&bin),
+            "should detect null bytes as binary"
+        );
     }
 
     #[test]
@@ -631,7 +634,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let txt = tmp.path().join("readme.md");
         fs::write(&txt, b"# Hello\nThis is plain text.\n").unwrap();
-        assert!(!super::is_binary_file(&txt), "plain text should not be binary");
+        assert!(
+            !super::is_binary_file(&txt),
+            "plain text should not be binary"
+        );
     }
 
     #[test]
@@ -645,7 +651,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("notes.txt"), "hello world").unwrap();
         let mut app = App::new(tmp.path().to_path_buf()).unwrap();
-        let idx = app.left.entries.iter().position(|e| e.name == "notes.txt").unwrap();
+        let idx = app
+            .left
+            .entries
+            .iter()
+            .position(|e| e.name == "notes.txt")
+            .unwrap();
         app.left.selected = idx;
         app.enter_dir().unwrap();
         assert!(app.open_in_ycode.is_some());
@@ -658,7 +669,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("data.bin"), b"bin\x00data").unwrap();
         let mut app = App::new(tmp.path().to_path_buf()).unwrap();
-        let idx = app.left.entries.iter().position(|e| e.name == "data.bin").unwrap();
+        let idx = app
+            .left
+            .entries
+            .iter()
+            .position(|e| e.name == "data.bin")
+            .unwrap();
         app.left.selected = idx;
         app.enter_dir().unwrap();
         assert!(app.open_in_ycode.is_none());
