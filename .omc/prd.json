@@ -1,0 +1,73 @@
+{
+  "task": "Implement embedded browser pane (Option A: Tauri Window::add_child) to replace iframe-restricted BrowserPane and polling-based NativeBrowserPane",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Enable Tauri unstable feature in Cargo.toml",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src-tauri/Cargo.toml tauri dependency has features = [\"unstable\"] and version = \"=2.10.3\"",
+        "SAFETY comment on the tauri dep line explains the semver exemption",
+        "cargo check --features desktop completes without error"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Implement Rust embedded browser commands in embedded_browser.rs",
+      "passes": true,
+      "acceptanceCriteria": [
+        "File src-tauri/src/embedded_browser.rs exists with 4 commands: create_embedded_browser, destroy_embedded_browser, navigate_embedded_browser, set_embedded_browser_bounds",
+        "create_embedded_browser uses app.get_window(\"main\") -> Window<R> -> .add_child(WebviewBuilder, position, size)",
+        "destroy/navigate/set_bounds use app.get_webview(label) to resolve the handle",
+        "No .unwrap() — all errors propagate as Result<(), String>",
+        "cargo check --features desktop passes"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Register embedded_browser module and commands in lib.rs + main.rs",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src-tauri/src/lib.rs has #[cfg(feature = \"desktop\")] pub mod embedded_browser;",
+        "src-tauri/src/main.rs invoke_handler includes all 4 embedded_browser commands",
+        "ExitRequested handler in main.rs closes eb- prefixed webviews (or relies on parent window close)",
+        "cargo check --features desktop passes"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Add embedded_browser to TypeScript types and IPC bridge",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/types.ts PaneKind union includes \"embedded_browser\"",
+        "src/ipc/bridge.ts has createEmbeddedBrowser, destroyEmbeddedBrowser, navigateEmbeddedBrowser, setEmbeddedBrowserBounds wrappers",
+        "TypeScript compiles without errors (pnpm build or tsc --noEmit)"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Implement EmbeddedBrowserPane.ts",
+      "passes": true,
+      "acceptanceCriteria": [
+        "File src/browser/EmbeddedBrowserPane.ts exists and implements the Pane interface",
+        "spawn() calls api.createEmbeddedBrowser with physical pixel bounds (no window.innerPosition offset — child webview uses window-relative coords)",
+        "scheduleFit() calls api.setEmbeddedBrowserBounds via ResizeObserver — no setInterval polling",
+        "dispose() calls api.destroyEmbeddedBrowser and removes the DOM placeholder",
+        "URL bar with back/forward/reload buttons present, same UX as NativeBrowserPane",
+        "TypeScript compiles without errors"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Wire EmbeddedBrowserPane into WorkspaceManager and make it the default",
+      "passes": true,
+      "acceptanceCriteria": [
+        "WorkspaceManager.createPane handles pane_kind === \"embedded_browser\" and returns EmbeddedBrowserPane",
+        "WorkspaceManager splitBrowser (line ~384) creates panes with pane_kind: \"embedded_browser\"",
+        "LayoutTree.ts newBrowserPane() returns pane_kind: \"embedded_browser\"",
+        "Existing native_browser and browser pane types still work (backward compat)",
+        "TypeScript compiles without errors"
+      ]
+    }
+  ]
+}
