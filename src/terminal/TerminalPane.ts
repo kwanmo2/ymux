@@ -227,6 +227,25 @@ export class TerminalPane implements Pane {
       // element not yet measurable; ignore
     }
     const { cols, rows } = this.currentDims();
+
+    // Register data + exit listeners *before* spawning the PTY. Tauri's
+    // `emit` is fire-and-forget — events for `pty:data:{id}` that arrive
+    // while no listener is registered are dropped on the floor. TUI apps
+    // like Claude Code / Codex emit their alt-screen entry
+    // (`\x1b[?1049h`), mouse-mode setup, and initial cursor positioning
+    // immediately on start; missing any of those leaves xterm and the
+    // shell in disagreement about screen state and shows up as garbled,
+    // overlapping output ("화면이 깨진다") that never recovers until a
+    // full redraw.
+    const dataUnlisten = await onPaneData(this.id, (bytes) => {
+      this.term.write(bytes);
+    });
+    const exitUnlisten = await onPaneExit(this.id, (code) => {
+      this.term.writeln(`\r\n\x1b[2m[process exited with code ${code}]\x1b[0m`);
+      this.opts.onExit?.(code);
+    });
+    this.unlisteners.push(dataUnlisten, exitUnlisten);
+
     try {
       await api.spawnPane({
         id: this.id,
@@ -243,15 +262,6 @@ export class TerminalPane implements Pane {
         this.setBgColor(this.spec.bg_color);
       }
 
-      const dataUnlisten = await onPaneData(this.id, (bytes) => {
-        this.term.write(bytes);
-      });
-      const exitUnlisten = await onPaneExit(this.id, (code) => {
-        this.term.writeln(`\r\n\x1b[2m[process exited with code ${code}]\x1b[0m`);
-        this.opts.onExit?.(code);
-      });
-      this.unlisteners.push(dataUnlisten, exitUnlisten);
-
       // Optional startup command: the Rust side intentionally does not run
       // this itself; the frontend knows when the terminal is actually ready
       // to accept input, which avoids races with the shell's own init
@@ -265,6 +275,11 @@ export class TerminalPane implements Pane {
         }, 200);
       }
     } catch (e) {
+      // Spawn failed — tear down the listeners we registered above so they
+      // don't leak (and so a retry with the same pane id doesn't double-fire
+      // the data handler).
+      for (const u of this.unlisteners) u();
+      this.unlisteners = [];
       // `e` from Tauri can be a string (Rust error serialized as a string),
       // an Error (wrapped by `bridge.ts call()`), an object (capability
       // rejection), or even `undefined` if a permission was denied silently.

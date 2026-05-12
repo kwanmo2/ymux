@@ -491,6 +491,29 @@ mod tests {
     }
 
     #[test]
+    fn scroll_fills_viewport_at_end_of_file() {
+        // Regression: main.rs used to never update `viewport_rows`, so on a
+        // 40-row terminal the scroll math capped `scroll_row` at
+        // `line_count - 24`, leaving 16 trailing rows of "~" once the cursor
+        // reached the bottom. When the viewport is synced to actual editor
+        // height, the entire viewport stays filled with real content.
+        let text = (0..100)
+            .map(|i| format!("line {}", i))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut app = app_with_text(&text);
+        app.viewport_rows = 40;
+        for _ in 0..100 {
+            app.move_cursor_down();
+        }
+        assert_eq!(app.cursor_row, 99);
+        // With viewport_rows = 40, the bottom of the viewport sits exactly on
+        // the last line of the file.
+        assert_eq!(app.scroll_row, 100 - app.viewport_rows);
+        assert!(app.cursor_row < app.scroll_row + app.viewport_rows);
+    }
+
+    #[test]
     fn exit_dialog_cancel() {
         let mut app = app_with_text("hello");
         assert!(!app.exit_dialog);

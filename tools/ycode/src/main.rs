@@ -33,6 +33,10 @@ fn main() -> Result<()> {
     result
 }
 
+/// Layout overhead consumed by non-editor chrome (title bar + status line +
+/// command/message line). Kept in sync with the constraints in `ui::draw`.
+const EDITOR_CHROME_ROWS: u16 = 3;
+
 fn run(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     file_path: Option<PathBuf>,
@@ -40,6 +44,13 @@ fn run(
     let mut app = App::new(file_path)?;
 
     loop {
+        // Sync viewport_rows with the actual editor area before drawing so
+        // scrolling math matches what the user sees. Without this, scroll
+        // and page-up/down use a stale 24-row viewport and the bottom of the
+        // editor fills with "~" placeholders once the cursor passes line 24.
+        let size = terminal.size()?;
+        app.viewport_rows = size.height.saturating_sub(EDITOR_CHROME_ROWS).max(1) as usize;
+
         terminal.draw(|frame| ui::draw(frame, &app))?;
 
         if event::poll(std::time::Duration::from_millis(50))? {
