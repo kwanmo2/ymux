@@ -11,6 +11,7 @@ import { mountStatusBar } from "./statusbar/StatusBar";
 import { initLang, t } from "./i18n/i18n";
 import { mountCommandPalette, toggle as togglePalette } from "./palette/CommandPalette";
 import { builtinCommands } from "./palette/commands";
+import { mountNotesOverlay, toggle as toggleNotes } from "./notes/NotesOverlay";
 
 async function main(): Promise<void> {
   initLang();
@@ -53,6 +54,9 @@ async function main(): Promise<void> {
   // Command palette (Ctrl+Shift+P)
   mountCommandPalette(document.body, builtinCommands(manager));
 
+  // Notes overlay (Ctrl+Alt+N)
+  mountNotesOverlay(document.body);
+
   // Global keybindings. Tauri's global-shortcut plugin is overkill for
   // window-local bindings — plain DOM events are sufficient inside WebView2.
   window.addEventListener("keydown", (ev) => {
@@ -69,6 +73,16 @@ async function main(): Promise<void> {
         ev.preventDefault();
         void manager.activate(id).then(() => refreshWorkspaceBar(app));
       }
+      return;
+    }
+
+    // Ctrl+Alt+N toggle notes for the active workspace. Layout-independent
+    // via ev.code so non-QWERTY users still hit the same physical key.
+    if (ev.ctrlKey && ev.altKey && !ev.shiftKey && ev.code === "KeyN") {
+      ev.preventDefault();
+      const wsId = manager.activeIdValue;
+      toggleNotes(wsId, manager.getWorkspaceName(wsId));
+      refreshWorkspaceBar(app);
       return;
     }
 

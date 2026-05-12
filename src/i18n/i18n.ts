@@ -720,4 +720,36 @@ const strings: Translations = {
     fr: "double-clic pour renommer", ar: "انقر مرتين لإعادة التسمية", pt: "clique duplo para renomear",
     ru: "двойной клик для переименования", tr: "yeniden adlandırmak için çift tıklayın", de: "Doppelklick zum Umbenennen", vi: "nhấp đúp để đổi tên",
   },
+
+  // ── Notes overlay ──────────────────────────────────────────────
+  "notes.title": {
+    en: "Notes", ko: "노트", ja: "ノート",
+    zh: "笔记", hi: "नोट्स", es: "Notas",
+    fr: "Notes", ar: "ملاحظات", pt: "Notas",
+    ru: "Заметки", tr: "Notlar", de: "Notizen", vi: "Ghi chú",
+  },
+  "notes.buttonTitle": {
+    en: "Open notes (Ctrl+Alt+N)", ko: "노트 열기 (Ctrl+Alt+N)", ja: "ノートを開く (Ctrl+Alt+N)",
+    zh: "打开笔记 (Ctrl+Alt+N)", hi: "नोट्स खोलें (Ctrl+Alt+N)", es: "Abrir notas (Ctrl+Alt+N)",
+    fr: "Ouvrir les notes (Ctrl+Alt+N)", ar: "فتح الملاحظات (Ctrl+Alt+N)", pt: "Abrir notas (Ctrl+Alt+N)",
+    ru: "Открыть заметки (Ctrl+Alt+N)", tr: "Notları aç (Ctrl+Alt+N)", de: "Notizen öffnen (Ctrl+Alt+N)", vi: "Mở ghi chú (Ctrl+Alt+N)",
+  },
+  "notes.close": {
+    en: "Close", ko: "닫기", ja: "閉じる",
+    zh: "关闭", hi: "बंद करें", es: "Cerrar",
+    fr: "Fermer", ar: "إغلاق", pt: "Fechar",
+    ru: "Закрыть", tr: "Kapat", de: "Schließen", vi: "Đóng",
+  },
+  "notes.placeholder": {
+    en: "Write your notes here…", ko: "여기에 메모를 작성하세요…", ja: "ここにメモを書いてください…",
+    zh: "在此处写下笔记…", hi: "यहाँ अपने नोट्स लिखें…", es: "Escribe tus notas aquí…",
+    fr: "Écrivez vos notes ici…", ar: "اكتب ملاحظاتك هنا…", pt: "Escreva suas notas aqui…",
+    ru: "Запишите свои заметки здесь…", tr: "Notlarınızı buraya yazın…", de: "Notizen hier schreiben…", vi: "Viết ghi chú của bạn ở đây…",
+  },
+  "shortcut.notes": {
+    en: "Open notes dialog", ko: "노트 다이얼로그 열기", ja: "ノートダイアログを開く",
+    zh: "打开笔记对话框", hi: "नोट्स डायलॉग खोलें", es: "Abrir diálogo de notas",
+    fr: "Ouvrir la boîte de dialogue des notes", ar: "فتح مربع حوار الملاحظات", pt: "Abrir caixa de notas",
+    ru: "Открыть окно заметок", tr: "Notlar iletişim kutusunu aç", de: "Notizen-Dialog öffnen", vi: "Mở hộp thoại ghi chú",
+  },
 };

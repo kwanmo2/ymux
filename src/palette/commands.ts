@@ -1,4 +1,5 @@
 import type { WorkspaceManager } from "../workspace/WorkspaceManager";
+import { toggle as toggleNotes } from "../notes/NotesOverlay";
 import { t } from "../i18n/i18n";
 
 export interface CommandDef {
@@ -61,6 +62,15 @@ export function builtinCommands(manager: WorkspaceManager): CommandDef[] {
       label: () => t("shortcut.prevPane"),
       keybinding: "Ctrl+Shift+Tab",
       action: () => manager.cycleFocus(-1),
+    },
+    {
+      id: "notes.toggle",
+      label: () => t("shortcut.notes"),
+      keybinding: "Ctrl+Alt+N",
+      action: () => {
+        const wsId = manager.activeIdValue;
+        toggleNotes(wsId, manager.getWorkspaceName(wsId));
+      },
     },
     {
       id: "workspace.rename",

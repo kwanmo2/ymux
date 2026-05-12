@@ -2,6 +2,11 @@ import type { ShellProfile } from "../types";
 import type { WorkspaceManager } from "./WorkspaceManager";
 import { api } from "../ipc/bridge";
 import { mountHelpButton } from "../help/HelpOverlay";
+import {
+  toggle as toggleNotes,
+  hasNotes,
+  onNotesChange,
+} from "../notes/NotesOverlay";
 import { t, onLangChange } from "../i18n/i18n";
 
 function wsTooltip(id: number, manager: WorkspaceManager): string {
@@ -23,7 +28,14 @@ export function mountWorkspaceBar(
   bar.appendChild(wsGroup);
 
   const buttons = new Map<number, HTMLButtonElement>();
+  const noteButtons = new Map<number, HTMLButtonElement>();
+
+  const noteIconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>`;
+
   for (let i = 1; i <= 9; i++) {
+    const pair = document.createElement("div");
+    pair.className = "workspace-bar__ws-pair";
+
     const btn = document.createElement("button");
     btn.className = "workspace-bar__ws";
     btn.textContent = String(i);
@@ -42,9 +54,26 @@ export function mountWorkspaceBar(
         highlight();
       }
     });
-    wsGroup.appendChild(btn);
+    pair.appendChild(btn);
     buttons.set(i, btn);
+
+    const noteBtn = document.createElement("button");
+    noteBtn.className = "workspace-bar__note-btn";
+    noteBtn.type = "button";
+    noteBtn.innerHTML = noteIconSvg;
+    noteBtn.title = `${t("notes.title")} — ${i}`;
+    noteBtn.setAttribute("aria-label", `${t("notes.title")} — ${i}`);
+    noteBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      toggleNotes(i, manager.getWorkspaceName(i));
+    });
+    pair.appendChild(noteBtn);
+    noteButtons.set(i, noteBtn);
+
+    wsGroup.appendChild(pair);
   }
+
+  const cleanupNotesSub = onNotesChange(() => highlight());
 
   const spacer = document.createElement("div");
   spacer.className = "workspace-bar__spacer";
@@ -122,6 +151,17 @@ export function mountWorkspaceBar(
       // gave it. CSS handles ellipsis if the name overflows max-width.
       btn.textContent = isCustom ? `${id}: ${name}` : String(id);
     }
+    for (const [id, noteBtn] of noteButtons) {
+      const name = manager.getWorkspaceName(id);
+      const isCustom = name && name !== `workspace-${id}` && name !== "main";
+      const label = isCustom ? `${id}: ${name}` : String(id);
+      noteBtn.title = `${t("notes.title")} — ${label}`;
+      noteBtn.setAttribute("aria-label", `${t("notes.title")} — ${label}`);
+      noteBtn.classList.toggle(
+        "workspace-bar__note-btn--has-notes",
+        hasNotes(id),
+      );
+    }
   }
 
   highlight();
@@ -138,6 +178,7 @@ export function mountWorkspaceBar(
   return () => {
     cleanupLang();
     cleanupHelp();
+    cleanupNotesSub();
     bar.remove();
   };
 }

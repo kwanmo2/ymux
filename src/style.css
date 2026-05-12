@@ -44,7 +44,40 @@ body,
 
 .workspace-bar__group {
   display: flex;
-  gap: 4px;
+  gap: 6px;
+}
+
+.workspace-bar__ws-pair {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.workspace-bar__note-btn {
+  background: transparent;
+  color: var(--fg-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  width: 18px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.45;
+}
+
+.workspace-bar__note-btn:hover {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.workspace-bar__note-btn--has-notes {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .workspace-bar__ws {
@@ -384,6 +417,95 @@ body,
 .help-modal__close:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ── Notes overlay ─────────────────────────────────────────────────────── */
+
+.notes-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 150;
+}
+
+.notes-backdrop--visible {
+  display: block;
+}
+
+.notes-modal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 151;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  width: min(720px, 80vw);
+  height: min(560px, 75vh);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notes-modal--visible {
+  display: flex;
+}
+
+.notes-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notes-modal__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.notes-modal__close {
+  background: transparent;
+  color: var(--fg-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notes-modal__close:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.notes-modal__textarea {
+  flex: 1;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+}
+
+.notes-modal__textarea:focus {
+  border-color: var(--accent);
 }
 
 /* ── Pane title label ─────────────────────────────────────────────────────── */
