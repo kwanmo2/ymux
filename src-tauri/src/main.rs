@@ -54,10 +54,14 @@ fn main() {
             ymux_lib::webview::navigate_webview,
             ymux_lib::webview::resize_webview,
             ymux_lib::webview::zoom_webview,
+            ymux_lib::webview::set_webview_visible,
             ymux_lib::embedded_browser::create_embedded_browser,
             ymux_lib::embedded_browser::destroy_embedded_browser,
             ymux_lib::embedded_browser::navigate_embedded_browser,
             ymux_lib::embedded_browser::set_embedded_browser_bounds,
+            ymux_lib::embedded_browser::set_embedded_browser_visible,
+            ymux_lib::embedded_browser::forward_keystroke,
+            ymux_lib::embedded_browser::child_webview_focused,
         ])
         .setup(|app| {
             let ipc_addr = start_ipc_server(app.handle().clone());

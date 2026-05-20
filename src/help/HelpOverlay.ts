@@ -1,4 +1,5 @@
 import { t, getLang, setLang, onLangChange, ALL_LANGS, type Lang } from "../i18n/i18n";
+import { pushPopup, popPopup } from "../browser/popupBlur";
 
 interface ShortcutEntry {
   keys: string;
@@ -169,7 +170,12 @@ export function mountHelpButton(parent: HTMLElement): () => void {
     modal.appendChild(closeBtn);
   }
 
+  let isOpen = false;
+
   function show() {
+    if (isOpen) return;
+    isOpen = true;
+    pushPopup();
     render();
     backdrop.classList.add("help-backdrop--visible");
     modal.classList.add("help-modal--visible");
@@ -181,6 +187,9 @@ export function mountHelpButton(parent: HTMLElement): () => void {
   }
 
   function hide() {
+    if (!isOpen) return;
+    isOpen = false;
+    popPopup();
     backdrop.classList.remove("help-backdrop--visible");
     modal.classList.remove("help-modal--visible");
     backdrop.setAttribute("aria-hidden", "true");

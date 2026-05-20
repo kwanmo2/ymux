@@ -13,6 +13,7 @@ import type {
   Uuid,
   Workspace,
 } from "../types";
+import { listen as tauriListen } from "@tauri-apps/api/event";
 import { api } from "../ipc/bridge";
 import { TerminalPane } from "../terminal/TerminalPane";
 import { BrowserPane } from "../browser/BrowserPane";
@@ -36,7 +37,12 @@ export class WorkspaceManager {
   private paneCaches = new Map<number, Map<Uuid, Pane>>();
   private workspaceContainers = new Map<number, HTMLElement>();
   private activeId: number;
-  private focusedPaneId: Uuid | null = null;
+  // Backing field — DO NOT read/write directly. Go through the
+  // `focusedPaneId` accessor below so the `.pane--focused` CSS class stays
+  // in sync. We need the explicit class because browser panes' OS-level
+  // child webviews own keyboard focus, which means CSS `:focus-within`
+  // never activates on the `.pane` DOM element.
+  private _focusedPaneId: Uuid | null = null;
   private saveTimer: number | null = null;
   /// Cache of workspace containers that have already had their panes spawned
   /// on first visit, so subsequent visits are zero-cost.
@@ -50,6 +56,29 @@ export class WorkspaceManager {
     this.config = config;
     this.shells = shells;
     this.activeId = config.active_workspace;
+  }
+
+  /// Active pane within the active workspace. Setting this toggles the
+  /// `.pane--focused` CSS class on the matching `.pane` element so browser
+  /// panes (whose OS-level child webview owns keyboard focus, defeating
+  /// `:focus-within`) still show the focus border.
+  private get focusedPaneId(): Uuid | null {
+    return this._focusedPaneId;
+  }
+
+  private set focusedPaneId(id: Uuid | null) {
+    if (this._focusedPaneId === id) return;
+    if (this._focusedPaneId !== null) {
+      this.host
+        .querySelector<HTMLElement>(`.pane[data-pane-id="${this._focusedPaneId}"]`)
+        ?.classList.remove("pane--focused");
+    }
+    this._focusedPaneId = id;
+    if (id !== null) {
+      this.host
+        .querySelector<HTMLElement>(`.pane[data-pane-id="${id}"]`)
+        ?.classList.add("pane--focused");
+    }
   }
 
   get allShells(): ShellProfile[] {
@@ -126,6 +155,28 @@ export class WorkspaceManager {
       (ev) => handlePaneActivation(ev.target, true),
       true, // capture phase: run before xterm.js's own handlers
     );
+
+    // Clicks on an embedded child webview (EmbeddedBrowserPane) bypass the
+    // main webview's DOM entirely. The child's initialization_script (see
+    // embedded_browser.rs) catches its own `pointerdown` / `focus` and
+    // invokes `child_webview_focused` with its pane id; Rust re-emits
+    // `ymux:child-focused`, which we listen for here. The id comes from
+    // the clicked pane itself — no cursor mapping involved, reliable with
+    // any number of browser panes. Requires the `browser-children`
+    // capability so Tauri IPC is exposed in the remote-URL webview.
+    void tauriListen<string>("ymux:child-focused", (ev) => {
+      const id = ev.payload;
+      if (!id) return;
+      const spec = this.getPaneSpec(id);
+      if (!spec) return;
+      if (
+        spec.pane_kind === "embedded_browser" ||
+        spec.pane_kind === "native_browser" ||
+        spec.pane_kind === "browser"
+      ) {
+        this.focusedPaneId = id;
+      }
+    }).catch((e) => console.warn("listen ymux:child-focused failed:", e));
 
     await this.activate(this.activeId);
   }

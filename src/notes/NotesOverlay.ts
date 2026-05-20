@@ -1,4 +1,5 @@
 import { t, onLangChange } from "../i18n/i18n";
+import { pushPopup, popPopup } from "../browser/popupBlur";
 
 const STORAGE_PREFIX = "ymux-notes-";
 
@@ -12,6 +13,7 @@ let langCleanup: (() => void) | null = null;
 
 let currentWorkspaceId: number | null = null;
 let currentWorkspaceName: string | null = null;
+let isOpen = false;
 
 const changeListeners = new Set<() => void>();
 
@@ -109,6 +111,10 @@ export function mountNotesOverlay(container: HTMLElement): () => void {
   });
 
   return () => {
+    if (isOpen) {
+      isOpen = false;
+      popPopup();
+    }
     if (keyHandler) document.removeEventListener("keydown", keyHandler);
     langCleanup?.();
     modal?.remove();
@@ -140,6 +146,10 @@ export function toggle(
 
 function show(workspaceId: number, workspaceName: string | null): void {
   if (!modal || !backdrop || !textarea) return;
+  if (!isOpen) {
+    isOpen = true;
+    pushPopup();
+  }
   currentWorkspaceId = workspaceId;
   currentWorkspaceName = workspaceName;
   try {
@@ -156,6 +166,9 @@ function show(workspaceId: number, workspaceName: string | null): void {
 
 function hide(): void {
   if (!modal || !backdrop) return;
+  if (!isOpen) return;
+  isOpen = false;
+  popPopup();
   backdrop.classList.remove("notes-backdrop--visible");
   modal.classList.remove("notes-modal--visible");
   backdrop.setAttribute("aria-hidden", "true");

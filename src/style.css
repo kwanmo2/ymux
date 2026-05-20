@@ -184,7 +184,8 @@ body,
   flex-direction: column;
 }
 
-.pane:focus-within {
+.pane:focus-within,
+.pane--focused {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
@@ -522,7 +523,8 @@ body,
   user-select: none;
 }
 
-.pane:focus-within .pane-title {
+.pane:focus-within .pane-title,
+.pane--focused .pane-title {
   color: var(--accent);
 }
 

@@ -9,6 +9,7 @@ import type { PaneSpec, Uuid } from "../types";
 import type { Pane } from "../layout/Pane";
 import { api } from "../ipc/bridge";
 import { t, onLangChange } from "../i18n/i18n";
+import { isPopupOpen, registerBlurListener } from "./popupBlur";
 
 export interface EmbeddedBrowserPaneOptions {
   spec: PaneSpec;
@@ -32,6 +33,8 @@ export class EmbeddedBrowserPane implements Pane {
   private cleanupLang: () => void;
   private history: string[] = [];
   private historyIndex = -1;
+  private hiddenForPopup = false;
+  private unregisterBlur: (() => void) | null = null;
 
   constructor(opts: EmbeddedBrowserPaneOptions) {
     this.id = opts.spec.id;
@@ -139,6 +142,25 @@ export class EmbeddedBrowserPane implements Pane {
     void api
       .createEmbeddedBrowser(this.id, initial, bounds.x, bounds.y, bounds.width, bounds.height)
       .catch((e) => console.error("[EmbeddedBrowserPane] create failed", e));
+
+    this.unregisterBlur = registerBlurListener((blurred) => this.onPopupBlur(blurred));
+    if (isPopupOpen()) {
+      this.onPopupBlur(true);
+    }
+  }
+
+  private onPopupBlur(blurred: boolean): void {
+    if (!this.spawned) return;
+    this.hiddenForPopup = blurred;
+    if (blurred) {
+      void api.setEmbeddedBrowserVisible(this.id, false).catch(() => {});
+    } else {
+      // Restore the real bounds — Rust's set_embedded_browser_visible(true) is
+      // a no-op; the frontend must re-emit them.
+      const b = this.getPhysicalBounds();
+      void api.setEmbeddedBrowserVisible(this.id, true).catch(() => {});
+      void api.setEmbeddedBrowserBounds(this.id, b.x, b.y, b.width, b.height).catch(() => {});
+    }
   }
 
   focus(): void {
@@ -150,7 +172,7 @@ export class EmbeddedBrowserPane implements Pane {
     if (this.fitRaf !== null) return;
     this.fitRaf = requestAnimationFrame(() => {
       this.fitRaf = null;
-      if (!this.spawned) return;
+      if (!this.spawned || this.hiddenForPopup) return;
       const b = this.getPhysicalBounds();
       void api
         .setEmbeddedBrowserBounds(this.id, b.x, b.y, b.width, b.height)
@@ -166,6 +188,10 @@ export class EmbeddedBrowserPane implements Pane {
   dispose(): void {
     this.cleanupLang();
     this.resizeObserver.disconnect();
+    if (this.unregisterBlur) {
+      this.unregisterBlur();
+      this.unregisterBlur = null;
+    }
     if (this.fitRaf !== null) {
       cancelAnimationFrame(this.fitRaf);
       this.fitRaf = null;

@@ -1,5 +1,6 @@
 import type { HotKeyDef } from "../types";
 import { t } from "../i18n/i18n";
+import { pushPopup, popPopup } from "../browser/popupBlur";
 
 export function openHotKeyManager(
   initial: HotKeyDef[],
@@ -8,6 +9,8 @@ export function openHotKeyManager(
   onBgColorChange: (color: string | null) => void,
 ): void {
   let draft: HotKeyDef[] = initial.map((h) => ({ ...h }));
+  let closed = false;
+  pushPopup();
 
   const backdrop = document.createElement("div");
   backdrop.className = "help-backdrop";
@@ -141,6 +144,9 @@ export function openHotKeyManager(
   window.addEventListener("keydown", onKey);
 
   function close(): void {
+    if (closed) return;
+    closed = true;
+    popPopup();
     window.removeEventListener("keydown", onKey);
     backdrop.remove();
   }

@@ -138,6 +138,11 @@ export const api = {
     height: number,
   ): Promise<void> => call("resize_webview", { id, x, y, width, height }),
 
+  /// Show or hide a native child webview (used to keep ymux popups visible
+  /// over browser panes — the child window otherwise paints above all HTML).
+  setWebviewVisible: (id: string, visible: boolean): Promise<void> =>
+    call("set_webview_visible", { id, visible }),
+
   /// Create an embedded child webview (Window::add_child). Position and size
   /// are in physical pixels relative to the main window's content area.
   createEmbeddedBrowser: (
@@ -166,6 +171,12 @@ export const api = {
     width: number,
     height: number,
   ): Promise<void> => call("set_embedded_browser_bounds", { id, x, y, width, height }),
+
+  /// Show or hide an embedded child webview. `visible: false` moves it
+  /// off-screen and shrinks to 1×1; `visible: true` is a no-op (the
+  /// frontend must re-emit real bounds via setEmbeddedBrowserBounds).
+  setEmbeddedBrowserVisible: (id: string, visible: boolean): Promise<void> =>
+    call("set_embedded_browser_visible", { id, visible }),
 };
 
 /// Subscribe to PTY stdout for a single pane. Returns an unlisten handle.

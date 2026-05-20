@@ -11,6 +11,7 @@ import type { PaneSpec, Uuid } from "../types";
 import type { Pane } from "../layout/Pane";
 import { api } from "../ipc/bridge";
 import { t, onLangChange } from "../i18n/i18n";
+import { isPopupOpen, registerBlurListener } from "./popupBlur";
 
 export interface NativeBrowserPaneOptions {
   spec: PaneSpec;
@@ -42,6 +43,8 @@ export class NativeBrowserPane implements Pane {
   private zoomOutBtn!: HTMLButtonElement;
   private zoomInBtn!: HTMLButtonElement;
   private zoomLabel!: HTMLSpanElement;
+  private hiddenForPopup = false;
+  private unregisterBlur: (() => void) | null = null;
 
   constructor(opts: NativeBrowserPaneOptions) {
     this.id = opts.spec.id;
@@ -218,7 +221,26 @@ export class NativeBrowserPane implements Pane {
       (e) => this.setStatus(`createWebview replied ERR: ${e}`),
     );
 
+    this.unregisterBlur = registerBlurListener((blurred) => this.onPopupBlur(blurred));
+    if (isPopupOpen()) {
+      this.onPopupBlur(true);
+    }
+
     this.startPollLoop();
+  }
+
+  private onPopupBlur(blurred: boolean): void {
+    if (!this.spawned) return;
+    this.hiddenForPopup = blurred;
+    void api.setWebviewVisible(this.id, !blurred).catch((e) =>
+      this.setStatus(`setWebviewVisible(${!blurred}) ERR: ${e}`),
+    );
+    if (!blurred) {
+      // Force one immediate resize so the child window re-attaches to the
+      // current placeholder rect — otherwise the next poll tick (up to 33ms)
+      // could briefly show stale position if the layout shifted while hidden.
+      void this.reposition();
+    }
   }
 
   focus(): void {
@@ -240,6 +262,10 @@ export class NativeBrowserPane implements Pane {
     this.resizeObserver.disconnect();
     for (const u of this.unlisteners) u();
     this.unlisteners = [];
+    if (this.unregisterBlur) {
+      this.unregisterBlur();
+      this.unregisterBlur = null;
+    }
     if (this.repositionRaf !== null) cancelAnimationFrame(this.repositionRaf);
     if (this.posPollTimer !== null) {
       window.clearInterval(this.posPollTimer);
@@ -323,7 +349,7 @@ export class NativeBrowserPane implements Pane {
     let lastKey = "";
     let pollCount = 0;
     this.posPollTimer = window.setInterval(() => {
-      if (!this.spawned) return;
+      if (!this.spawned || this.hiddenForPopup) return;
       pollCount++;
       void this.getScreenRect().then((r) => {
         const key = `${r.x},${r.y},${r.width},${r.height}`;

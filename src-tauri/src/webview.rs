@@ -175,3 +175,20 @@ pub fn resize_webview(
     .map_err(|e| format!("dispatch failed: {e}"))?;
     Ok(())
 }
+
+// Toggle visibility of a native child WebviewWindow. Used to momentarily
+// hide a browser pane while a ymux popup (palette, help, notes, hotkey) is
+// open — the child window is OS-level and would otherwise paint over the
+// popup's HTML.
+#[tauri::command]
+pub fn set_webview_visible(app: AppHandle, id: String, visible: bool) -> Result<(), String> {
+    let label = format!("browser-{}", id);
+    let app2 = app.clone();
+    app.run_on_main_thread(move || {
+        if let Some(win) = app2.get_webview_window(&label) {
+            let _ = if visible { win.show() } else { win.hide() };
+        }
+    })
+    .map_err(|e| format!("dispatch failed: {e}"))?;
+    Ok(())
+}

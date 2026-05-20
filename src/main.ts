@@ -3,6 +3,7 @@
 // workspace host and wires keyboard shortcuts.
 
 import "./style.css";
+import { listen } from "@tauri-apps/api/event";
 import { api } from "./ipc/bridge";
 import { WorkspaceManager, MAX_WORKSPACES } from "./workspace/WorkspaceManager";
 import { mountWorkspaceBar, refreshWorkspaceBar } from "./workspace/WorkspaceBar";
@@ -56,6 +57,31 @@ async function main(): Promise<void> {
 
   // Notes overlay (Ctrl+Alt+N)
   mountNotesOverlay(document.body);
+
+  // Replay shortcuts that were captured inside a child browser webview
+  // (its `initialization_script` forwards them via the `forward_keystroke`
+  // command, which re-emits this event). Synthesize a KeyboardEvent so the
+  // existing window keydown handler below catches it as if the user had
+  // pressed the key inside the main webview.
+  void listen<{
+    key: string;
+    code: string;
+    ctrl: boolean;
+    shift: boolean;
+    alt: boolean;
+  }>("ymux:forwarded-key", (ev) => {
+    const p = ev.payload;
+    const synth = new KeyboardEvent("keydown", {
+      key: p.key,
+      code: p.code,
+      ctrlKey: p.ctrl,
+      shiftKey: p.shift,
+      altKey: p.alt,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(synth);
+  }).catch((e) => console.warn("forwarded-key listen failed:", e));
 
   // Global keybindings. Tauri's global-shortcut plugin is overkill for
   // window-local bindings — plain DOM events are sufficient inside WebView2.

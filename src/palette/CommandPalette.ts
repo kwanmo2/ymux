@@ -1,5 +1,6 @@
 import { type CommandDef, fuzzyMatch } from "./commands";
 import { t, onLangChange } from "../i18n/i18n";
+import { pushPopup, popPopup } from "../browser/popupBlur";
 
 let paletteEl: HTMLElement | null = null;
 let backdropEl: HTMLElement | null = null;
@@ -58,7 +59,9 @@ export function toggle(): void {
 
 function show(): void {
   if (!paletteEl || !backdropEl || !inputEl) return;
+  if (visible) return;
   visible = true;
+  pushPopup();
   backdropEl.classList.add("palette-backdrop--visible");
   paletteEl.classList.add("palette--visible");
   inputEl.value = "";
@@ -70,7 +73,9 @@ function show(): void {
 
 function hide(): void {
   if (!paletteEl || !backdropEl) return;
+  if (!visible) return;
   visible = false;
+  popPopup();
   backdropEl.classList.remove("palette-backdrop--visible");
   paletteEl.classList.remove("palette--visible");
 }
