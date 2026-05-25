@@ -94,9 +94,17 @@ impl Highlighter {
             if row < start {
                 continue;
             }
+            // Drop zero-length spans. syntect's markdown highlighter emits
+            // empty trailing/leading spans at scope boundaries (`# heading`
+            // ends with one, the inline-code closer adds one, empty lines
+            // are one empty span). They contribute no characters but carry
+            // a style; ratatui's per-frame buffer diff can confuse those
+            // styled phantom positions for real cells, leaving "first
+            // letter" ghosts after scrolling through a markdown file.
             let owned: LineHighlights = ranges
                 .into_iter()
                 .map(|(st, t)| (st, t.strip_suffix('\n').unwrap_or(t).to_string()))
+                .filter(|(_, t)| !t.is_empty())
                 .collect();
             out.push(owned);
         }
@@ -244,6 +252,41 @@ mod tests {
             "expected `fn` to be colored with the keyword color {kw}, got spans: {:?}",
             out[0]
         );
+    }
+
+    /// Regression for the markdown scroll-ghost bug: syntect's markdown
+    /// highlighter emits zero-length spans at scope boundaries (heading end,
+    /// inline-code close, empty lines). `highlight_range` must drop them
+    /// before they reach the renderer — otherwise their styled-but-empty
+    /// positions confuse ratatui's per-frame cell diff and leave first-letter
+    /// ghosts when scrolling through markdown.
+    #[test]
+    fn markdown_highlight_drops_empty_spans() {
+        let yt = YTheme::default();
+        let h = Highlighter::new(Some(&PathBuf::from("test.md")), &yt);
+        let lines = vec![
+            "# Hello World".to_string(),
+            "".to_string(),
+            "This is **bold** and *italic* text.".to_string(),
+            "- A bullet item with `inline code`".to_string(),
+        ];
+        let highlighted = h.highlight_range(&lines, 0, lines.len());
+        for (row, spans) in highlighted.iter().enumerate() {
+            for (i, (_, text)) in spans.iter().enumerate() {
+                assert!(
+                    !text.is_empty(),
+                    "row {row} span[{i}] is empty — should be filtered",
+                );
+            }
+        }
+        // Sum-of-text-chars must still equal the source — the filter must
+        // only drop empty spans, never real characters.
+        let total: usize = highlighted
+            .iter()
+            .map(|spans| spans.iter().map(|(_, t)| t.chars().count()).sum::<usize>())
+            .sum();
+        let expected: usize = lines.iter().map(|l| l.chars().count()).sum();
+        assert_eq!(total, expected);
     }
 
     #[test]

@@ -6068,7 +6068,7 @@ dependencies = [
 
 [[package]]
 name = "ymux"
-version = "0.8.15"
+version = "0.8.16"
 dependencies = [
  "anyhow",
  "dirs 5.0.1",
