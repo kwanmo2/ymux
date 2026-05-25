@@ -67,8 +67,12 @@ impl Renderer {
             Event::HardBreak => self.flush_line(),
             Event::Rule => {
                 self.flush_line();
+                // ASCII '-' instead of '─' (U+2500): the box-drawing char is
+                // unicode-width=1 but Korean-locale terminal fonts render it
+                // as a 2-cell glyph, which desyncs ratatui's cell math from
+                // the actual display and leaves scroll ghosts.
                 self.lines.push(Line::from(Span::styled(
-                    "─".repeat(40),
+                    "-".repeat(40),
                     Style::default().fg(RULE),
                 )));
                 self.blank_line();
@@ -100,7 +104,8 @@ impl Renderer {
                 ));
             }
             Tag::Paragraph => {}
-            Tag::BlockQuote(_) => self.indent.push_str("│ "),
+            // ASCII '|' instead of '│' (U+2502) — see Rule comment.
+            Tag::BlockQuote(_) => self.indent.push_str("| "),
             Tag::CodeBlock(kind) => {
                 self.code_block = true;
                 let fence = match kind {
@@ -122,7 +127,9 @@ impl Renderer {
                     *n += 1;
                     m
                 } else {
-                    "• ".to_string()
+                    // ASCII '*' instead of '•' (U+2022) — same width
+                    // mismatch as the box-drawing chars.
+                    "* ".to_string()
                 };
                 self.current.push(Span::raw(indent));
                 self.current
@@ -157,7 +164,7 @@ impl Renderer {
                 self.blank_line();
             }
             TagEnd::BlockQuote(_) => {
-                let drop_by = "│ ".chars().map(|c| c.len_utf8()).sum::<usize>();
+                let drop_by = "| ".len();
                 let new_len = self.indent.len().saturating_sub(drop_by);
                 self.indent.truncate(new_len);
             }
@@ -307,8 +314,8 @@ mod tests {
     fn renders_unordered_list() {
         let lines = render("- one\n- two\n");
         let text = plain(&lines);
-        assert!(text.contains("• one"));
-        assert!(text.contains("• two"));
+        assert!(text.contains("* one"));
+        assert!(text.contains("* two"));
     }
 
     #[test]
@@ -348,7 +355,7 @@ mod tests {
     fn renders_blockquote_prefix() {
         let lines = render("> quoted\n");
         let text = plain(&lines);
-        assert!(text.contains("│ "));
+        assert!(text.contains("| "));
         assert!(text.contains("quoted"));
     }
 
@@ -364,6 +371,7 @@ mod tests {
         let text = plain(&lines);
         assert!(text.contains("before"));
         assert!(text.contains("after"));
-        assert!(text.contains("─"));
+        // ASCII rule (40 dashes). Any run of 4+ dashes confirms it rendered.
+        assert!(text.contains("----"));
     }
 }
