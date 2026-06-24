@@ -223,6 +223,35 @@ pub fn open_folder(path: String) -> YmuxResult<()> {
     Ok(())
 }
 
+/// Open a directory as a folder in VS Code (`code <path>`). Validates that the
+/// path is an existing directory before launching — same guard as
+/// [`open_folder`] — so we can't be tricked into opening an arbitrary target.
+#[tauri::command]
+pub fn open_in_editor(path: String) -> YmuxResult<()> {
+    let p = std::path::Path::new(&path);
+    if !p.is_dir() {
+        return Err(YmuxError::Other(
+            "open_in_editor: path is not an existing directory".into(),
+        ));
+    }
+    #[cfg(windows)]
+    {
+        // The VS Code launcher on Windows is `code.cmd`, which `Command::new`
+        // can't resolve directly — go through `cmd /C` so PATH lookup finds
+        // the shim. The path is passed as a separate, already-validated arg.
+        std::process::Command::new("cmd")
+            .args(["/C", "code", &path])
+            .spawn()
+            .map_err(YmuxError::Io)?;
+    }
+    #[cfg(not(windows))]
+    {
+        // Development hosts (Linux/macOS).
+        let _ = std::process::Command::new("code").arg(&path).spawn();
+    }
+    Ok(())
+}
+
 /// Start the reader thread that drains PTY output and forwards it to the
 /// frontend as Tauri events. Must be called once, at startup, after the
 /// [`AppState`] is installed.

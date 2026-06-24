@@ -592,6 +592,30 @@ export class WorkspaceManager {
     }
   }
 
+  /// Open the focused terminal pane's current working directory as a folder in
+  /// VS Code. Uses the live OSC 7 cwd when available, falling back to the
+  /// pane's saved cwd. No-op for non-terminal (browser) panes.
+  async openFocusedPaneInEditor(): Promise<void> {
+    const id = this.focusedPaneId;
+    if (!id) return;
+    const spec = this.getPaneSpec(id);
+    // pane_kind is optional and defaults to terminal; skip browser-family panes.
+    if (!spec || (spec.pane_kind && spec.pane_kind !== "terminal")) return;
+    let cwd: string | null = null;
+    try {
+      cwd = await api.getPaneCwd(id);
+    } catch {
+      /* backend had no cwd; fall back to the saved spec cwd */
+    }
+    cwd = cwd ?? spec.cwd ?? null;
+    if (!cwd) return;
+    try {
+      await api.openInEditor(cwd);
+    } catch {
+      /* `code` not on PATH, or path deleted; nothing actionable */
+    }
+  }
+
   /// Request the focused pane to toggle its scrollback search bar. Only
   /// TerminalPane exposes this; for non-terminal panes the call is a no-op.
   toggleSearchOnFocused(): void {

@@ -23,6 +23,7 @@ const SHORTCUTS: ShortcutEntry[] = [
   { keys: "Ctrl+F",         tKey: "shortcut.search" },
   { keys: "Ctrl+Shift+R",   tKey: "shortcut.rename" },
   { keys: "Ctrl+Shift+O",   tKey: "shortcut.openFolder" },
+  { keys: "Ctrl+Shift+E",   tKey: "shortcut.openInEditor" },
   { keys: "Ctrl+Shift+P",   tKey: "shortcut.palette" },
   { keys: "Ctrl+Alt+N",     tKey: "shortcut.notes" },
   { keys: "Ctrl+V",         tKey: "shortcut.paste" },

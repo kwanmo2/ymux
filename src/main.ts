@@ -200,6 +200,13 @@ async function main(): Promise<void> {
       void manager.openFocusedPaneFolder();
       return;
     }
+
+    // Ctrl+Shift+E open the focused terminal's working directory in VS Code.
+    if (ev.ctrlKey && ev.shiftKey && (key === "E" || key === "e")) {
+      ev.preventDefault();
+      void manager.openFocusedPaneInEditor();
+      return;
+    }
   });
 
   window.addEventListener("resize", () => manager.refitActive());

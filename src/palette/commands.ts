@@ -59,6 +59,12 @@ export function builtinCommands(manager: WorkspaceManager): CommandDef[] {
       action: () => void manager.openFocusedPaneFolder(),
     },
     {
+      id: "pane.openInEditor",
+      label: () => t("shortcut.openInEditor"),
+      keybinding: "Ctrl+Shift+E",
+      action: () => void manager.openFocusedPaneInEditor(),
+    },
+    {
       id: "pane.focusNext",
       label: () => t("shortcut.nextPane"),
       keybinding: "Ctrl+Tab",

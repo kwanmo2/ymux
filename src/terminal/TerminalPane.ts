@@ -133,7 +133,7 @@ export class TerminalPane implements Pane {
           return false;
         }
         if (!ev.shiftKey && k === "f") return false;
-        if (ev.shiftKey && (k === "h" || k === "v" || k === "w" || k === "z" || k === "r" || k === "p" || k === "o")) return false;
+        if (ev.shiftKey && (k === "h" || k === "v" || k === "w" || k === "z" || k === "r" || k === "p" || k === "o" || k === "e")) return false;
         if (k === "tab") return false;
       }
       if (ev.ctrlKey && ev.altKey && /^Digit[1-9]$/.test(ev.code)) return false;

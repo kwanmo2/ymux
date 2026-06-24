@@ -110,6 +110,11 @@ export const api = {
   /// Open a directory in the OS file explorer. Rust validates it is a real dir.
   openFolder: (path: string): Promise<void> => call("open_folder", { path }),
 
+  /// Open a directory as a folder in VS Code (`code <path>`). Rust validates
+  /// it is a real dir.
+  openInEditor: (path: string): Promise<void> =>
+    call("open_in_editor", { path }),
+
   /// Create a native child webview window positioned over a layout placeholder.
   createWebview: (
     id: string,
