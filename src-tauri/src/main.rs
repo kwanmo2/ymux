@@ -49,6 +49,7 @@ fn main() {
             ymux_lib::commands::set_active_workspace,
             ymux_lib::commands::get_pane_cwd,
             ymux_lib::commands::open_url,
+            ymux_lib::commands::open_folder,
             ymux_lib::webview::create_webview,
             ymux_lib::webview::destroy_webview,
             ymux_lib::webview::navigate_webview,

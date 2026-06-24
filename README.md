@@ -136,6 +136,7 @@ y* tool (yMux UI, yCode syntax highlighting, etc.). Edit it with the
 | `Ctrl+Shift+W`              | Close focused pane                   |
 | `Ctrl+Shift+Z`              | Zoom / unzoom focused pane           |
 | `Ctrl+Shift+R`              | Rename focused pane                  |
+| `Ctrl+Shift+O`              | Open working directory in explorer   |
 | `Ctrl+Shift+P`              | Open command palette                 |
 | `Ctrl+Alt+N`                | Toggle notes for active workspace    |
 | `Ctrl+V`                    | Paste clipboard into terminal        |

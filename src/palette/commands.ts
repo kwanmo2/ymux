@@ -53,6 +53,12 @@ export function builtinCommands(manager: WorkspaceManager): CommandDef[] {
       action: () => manager.toggleSearchOnFocused(),
     },
     {
+      id: "pane.openFolder",
+      label: () => t("shortcut.openFolder"),
+      keybinding: "Ctrl+Shift+O",
+      action: () => void manager.openFocusedPaneFolder(),
+    },
+    {
       id: "pane.focusNext",
       label: () => t("shortcut.nextPane"),
       keybinding: "Ctrl+Tab",

@@ -107,6 +107,9 @@ export const api = {
   /// Open a URL in the system default browser. Only http/https are allowed.
   openUrl: (url: string): Promise<void> => call("open_url", { url }),
 
+  /// Open a directory in the OS file explorer. Rust validates it is a real dir.
+  openFolder: (path: string): Promise<void> => call("open_folder", { path }),
+
   /// Create a native child webview window positioned over a layout placeholder.
   createWebview: (
     id: string,

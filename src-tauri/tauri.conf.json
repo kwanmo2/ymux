@@ -51,6 +51,10 @@
       "wix": {
         "fragmentPaths": ["wix/path-env.wxs"],
         "componentGroupRefs": ["PathEnvGroup"]
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerHooks": "nsis/installer-hooks.nsh"
       }
     }
   }

@@ -14,6 +14,7 @@ import type { Pane } from "../layout/Pane";
 import { api, describeError, onPaneData, onPaneExit } from "../ipc/bridge";
 import { HotKeyBar } from "./HotKeyBar";
 import { t, onLangChange } from "../i18n/i18n";
+import { getTerminalTheme, onTerminalThemeChange } from "./terminalThemes";
 
 export interface TerminalPaneOptions {
   spec: PaneSpec;
@@ -50,6 +51,7 @@ export class TerminalPane implements Pane {
   private opts: TerminalPaneOptions;
   private pendingResizeRaf = 0;
   private cleanupLang: () => void = () => {};
+  private cleanupTheme: () => void = () => {};
 
   constructor(opts: TerminalPaneOptions) {
     this.id = opts.spec.id;
@@ -98,27 +100,16 @@ export class TerminalPane implements Pane {
     this.termHost.className = "pane__term";
     this.element.appendChild(this.termHost);
 
-    const bgColor = opts.spec.bg_color || "#0b0f14";
+    const preset = getTerminalTheme();
+    const bgColor = opts.spec.bg_color || preset.background;
     this.term = new Terminal({
       allowProposedApi: true,
       cursorBlink: true,
       fontFamily:
-        "Cascadia Code, Consolas, 'Courier New', ui-monospace, monospace",
+        "D2Coding, 'D2Coding ligature', Cascadia Code, Consolas, 'Courier New', ui-monospace, monospace",
       fontSize: 13,
       scrollback: 10_000,
-      theme: {
-        background: bgColor,
-        foreground: "#d6deeb",
-        cursor: "#7fdbca",
-        black: "#000000",
-        red: "#ef6b73",
-        green: "#8ae234",
-        yellow: "#f3d64e",
-        blue: "#7aa6da",
-        magenta: "#c397d8",
-        cyan: "#70c0ba",
-        white: "#eaeaea",
-      },
+      theme: { ...preset, background: bgColor },
     });
 
     this.fit = new FitAddon();
@@ -142,7 +133,7 @@ export class TerminalPane implements Pane {
           return false;
         }
         if (!ev.shiftKey && k === "f") return false;
-        if (ev.shiftKey && (k === "h" || k === "v" || k === "w" || k === "z" || k === "r" || k === "p")) return false;
+        if (ev.shiftKey && (k === "h" || k === "v" || k === "w" || k === "z" || k === "r" || k === "p" || k === "o")) return false;
         if (k === "tab") return false;
       }
       if (ev.ctrlKey && ev.altKey && /^Digit[1-9]$/.test(ev.code)) return false;
@@ -162,6 +153,20 @@ export class TerminalPane implements Pane {
       }),
     );
     this.term.open(this.termHost);
+
+    // Safety net: if the bundled D2Coding webfont finishes loading after the
+    // terminal was opened, force xterm to re-measure glyph dimensions (toggling
+    // fontFamily retriggers CharSizeService) and refit so cells stay aligned.
+    void document.fonts.ready.then(() => {
+      try {
+        const ff = this.term.options.fontFamily;
+        this.term.options.fontFamily = "monospace";
+        this.term.options.fontFamily = ff;
+        this.fit.fit();
+      } catch {
+        /* terminal may already be disposed */
+      }
+    });
 
     this.term.onData((data) => {
       if (!this.spawned) return;
@@ -188,6 +193,20 @@ export class TerminalPane implements Pane {
     this.element.addEventListener("pointerdown", () => this.focus());
 
     this.cleanupLang = onLangChange(() => this.updateLang());
+    this.cleanupTheme = onTerminalThemeChange(() => this.applyTheme());
+  }
+
+  /// Re-apply the active terminal color preset to this pane's xterm instance.
+  /// Called when the user picks a different theme in Settings. A pane-level
+  /// `bg_color` override (set via the rename/context flow) wins over the
+  /// preset background; otherwise the preset's own background is used.
+  private applyTheme(): void {
+    const preset = getTerminalTheme();
+    const bg = this.spec.bg_color || preset.background;
+    this.term.options.theme = { ...preset, background: bg };
+    if (!this.spec.bg_color) {
+      this.element.style.background = preset.background;
+    }
   }
 
   private updateLang(): void {
@@ -373,7 +392,7 @@ export class TerminalPane implements Pane {
   /// Set the visible title for this pane. Used by the rename flow; the new
   /// title is also written back into the PaneSpec by WorkspaceManager.
   setBgColor(color: string | null): void {
-    const bg = color || "#0b0f14";
+    const bg = color || getTerminalTheme().background;
     this.spec = { ...this.spec, bg_color: color ?? "" };
     this.term.options.theme = { ...this.term.options.theme, background: bg };
     this.element.style.background = bg;
@@ -386,14 +405,49 @@ export class TerminalPane implements Pane {
 
   /// Recompute size based on the container. Debounced to one call per
   /// animation frame.
+  ///
+  /// xterm.js reflows the scrollback whenever `cols` changes, and that reflow
+  /// resets the viewport to the top of the buffer — so a plain `fit()` on
+  /// window resize (or on the spurious resize WebView2 fires when the app
+  /// regains focus) yanks the user away from where they were reading. To
+  /// avoid that we snapshot the viewport's distance from the bottom of the
+  /// buffer and restore the equivalent position after fit. If the user was
+  /// pinned to the bottom (the common case — an active shell prompt) we
+  /// simply scroll back to the bottom.
   scheduleFit(): void {
     if (this.pendingResizeRaf) return;
     this.pendingResizeRaf = requestAnimationFrame(() => {
       this.pendingResizeRaf = 0;
+
+      // Skip degenerate fits: if the container can't yield a sane size yet
+      // (zero/near-zero during a layout pass), resizing to 1×1 would itself
+      // scramble the viewport. Let a later resize correct it instead.
+      let proposed: { cols: number; rows: number } | undefined;
+      try {
+        proposed = this.fit.proposeDimensions();
+      } catch {
+        proposed = undefined;
+      }
+      if (!proposed || proposed.cols < 2 || proposed.rows < 2) return;
+
+      const buf = this.term.buffer.active;
+      const wasAtBottom = buf.viewportY >= buf.baseY;
+      const distanceFromBottom = buf.baseY - buf.viewportY;
+
       try {
         this.fit.fit();
       } catch {
         // fit throws when the element has zero size; ignore.
+        return;
+      }
+
+      // Restore the reading position the reflow may have discarded.
+      const after = this.term.buffer.active;
+      if (wasAtBottom) {
+        this.term.scrollToBottom();
+      } else {
+        const target = Math.max(0, after.baseY - distanceFromBottom);
+        this.term.scrollToLine(target);
       }
     });
   }
@@ -417,6 +471,7 @@ export class TerminalPane implements Pane {
 
   dispose(): void {
     this.cleanupLang();
+    this.cleanupTheme();
     for (const u of this.unlisteners) u();
     this.unlisteners = [];
     if (this.spawned) {

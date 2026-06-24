@@ -10,6 +10,7 @@ import { mountWorkspaceBar, refreshWorkspaceBar } from "./workspace/WorkspaceBar
 import { mountUpdateBanner } from "./update/UpdateBanner";
 import { mountStatusBar } from "./statusbar/StatusBar";
 import { initLang, t } from "./i18n/i18n";
+import { initTerminalTheme } from "./terminal/terminalThemes";
 import { mountCommandPalette, toggle as togglePalette } from "./palette/CommandPalette";
 import { builtinCommands } from "./palette/commands";
 import { mountNotesOverlay, toggle as toggleNotes } from "./notes/NotesOverlay";
@@ -17,6 +18,22 @@ import { promptWithBlur } from "./browser/popupBlur";
 
 async function main(): Promise<void> {
   initLang();
+  initTerminalTheme();
+
+  // Preload the bundled D2Coding webfont before any terminal is created.
+  // xterm.js measures glyph cell size at open() time, so the font must be
+  // ready first or cells render with fallback metrics and misalign.
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load('13px "D2Coding"'),
+        document.fonts.load('bold 13px "D2Coding"'),
+      ]),
+      new Promise((resolve) => setTimeout(resolve, 1500)),
+    ]);
+  } catch {
+    /* fall back to Cascadia Code if the font fails to load */
+  }
 
   const app = document.getElementById("app");
   if (!app) throw new Error("#app mount point missing");
@@ -174,6 +191,13 @@ async function main(): Promise<void> {
       const current = manager.getFocusedTitle() ?? "";
       const next = promptWithBlur(t("app.paneTitle"), current);
       if (next !== null) manager.renameFocused(next);
+      return;
+    }
+
+    // Ctrl+Shift+O open the focused terminal's working directory in Explorer.
+    if (ev.ctrlKey && ev.shiftKey && (key === "O" || key === "o")) {
+      ev.preventDefault();
+      void manager.openFocusedPaneFolder();
       return;
     }
   });

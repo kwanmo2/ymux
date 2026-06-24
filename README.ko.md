@@ -132,6 +132,7 @@ Linux/macOS 에서 플랫폼 독립적인 로직을 작업할 수 있습니다. 
 | `Ctrl+Shift+W`                 | 포커스된 pane 닫기                  |
 | `Ctrl+Shift+Z`                 | 포커스된 pane 확대 / 원복           |
 | `Ctrl+Shift+R`                 | 포커스된 pane 이름 변경             |
+| `Ctrl+Shift+O`                 | 작업 폴더를 탐색기로 열기           |
 | `Ctrl+Shift+P`                 | 커맨드 팔레트 열기                  |
 | `Ctrl+Alt+N`                   | 현재 워크스페이스 노트 토글         |
 | `Ctrl+V`                       | 클립보드를 터미널에 붙여넣기        |

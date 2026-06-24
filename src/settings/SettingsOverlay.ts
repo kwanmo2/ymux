@@ -8,6 +8,11 @@ import { getVersion } from "@tauri-apps/api/app";
 import { t, getLang, setLang, onLangChange, ALL_LANGS, type Lang } from "../i18n/i18n";
 import { api } from "../ipc/bridge";
 import { pushPopup, popPopup } from "../browser/popupBlur";
+import {
+  TERMINAL_THEMES,
+  getTerminalThemeId,
+  setTerminalTheme,
+} from "../terminal/terminalThemes";
 import type { YTheme, SettingsSection } from "./types";
 
 interface ShortcutEntry {
@@ -209,6 +214,32 @@ export function mountSettings(parent: HTMLElement): () => void {
     langRow.appendChild(spacer);
     host.appendChild(langRow);
 
+    // Terminal color theme — mirrors the language row layout. Selecting a
+    // preset persists to localStorage and live-updates every open terminal
+    // pane via the onTerminalThemeChange subscription.
+    const themeRow = document.createElement("div");
+    themeRow.className = "settings-row";
+    const themeLabel = document.createElement("div");
+    themeLabel.className = "settings-row__label";
+    themeLabel.textContent = t("settings.general.terminalTheme");
+    themeRow.appendChild(themeLabel);
+    const themeSel = document.createElement("select");
+    themeSel.className = "settings-hex-input";
+    themeSel.style.width = "auto";
+    const curTheme = getTerminalThemeId();
+    for (const entry of TERMINAL_THEMES) {
+      const opt = document.createElement("option");
+      opt.value = entry.id;
+      opt.textContent = entry.label;
+      if (entry.id === curTheme) opt.selected = true;
+      themeSel.appendChild(opt);
+    }
+    themeSel.addEventListener("change", () => setTerminalTheme(themeSel.value));
+    themeRow.appendChild(themeSel);
+    const themeSpacer = document.createElement("div");
+    themeRow.appendChild(themeSpacer);
+    host.appendChild(themeRow);
+
     const aboutH = document.createElement("h4");
     aboutH.textContent = t("settings.general.about");
     host.appendChild(aboutH);
@@ -227,7 +258,7 @@ export function mountSettings(parent: HTMLElement): () => void {
     versionLabel.textContent = t("settings.general.version");
     versionRow.appendChild(versionLabel);
     const versionValue = document.createElement("div");
-    versionValue.style.fontFamily = "Cascadia Mono, Cascadia Code, Consolas, monospace";
+    versionValue.style.fontFamily = "D2Coding, Cascadia Mono, Cascadia Code, Consolas, monospace";
     versionValue.style.color = "var(--accent, #7fdbca)";
     versionValue.textContent = "…";
     getVersion().then((v) => {

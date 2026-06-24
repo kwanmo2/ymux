@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "D2Coding";
+  src: url("/fonts/D2Coding.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "D2Coding";
+  src: url("/fonts/D2Coding-Bold.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   color-scheme: dark;
   --bg: #0b0f14;
@@ -368,7 +384,7 @@ body,
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 5px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   font-size: 11px;
   color: var(--accent);
 }
@@ -498,7 +514,7 @@ body,
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 10px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   font-size: 13px;
   resize: none;
   outline: none;
@@ -516,7 +532,7 @@ body,
   padding: 2px 6px 0 6px;
   font-size: 11px;
   color: var(--fg-muted);
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -610,7 +626,7 @@ body,
   border-radius: 4px;
   padding: 4px 6px;
   font-size: 12px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
 }
 
 .hotkey-modal__cmd-input {
@@ -722,14 +738,14 @@ body,
   border-radius: 4px;
   padding: 3px 6px;
   font-size: 12px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   min-width: 0;
 }
 
 .browser-pane__zoom {
   color: var(--fg-muted);
   font-size: 11px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   min-width: 32px;
   text-align: center;
   user-select: none;
@@ -829,7 +845,7 @@ body,
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 12px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   outline: none;
 }
 
@@ -917,7 +933,7 @@ body,
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 13px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   outline: none;
   box-sizing: border-box;
 }
@@ -952,7 +968,7 @@ body,
 .palette__keybinding {
   color: var(--fg-muted);
   font-size: 11px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -979,7 +995,7 @@ body,
   flex: 0 0 auto;
   user-select: none;
   font-size: 11px;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   color: var(--fg-muted);
 }
 
@@ -1208,7 +1224,7 @@ body,
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--fg);
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
   font-size: 13px;
   padding: 5px 7px;
   width: 100px;
@@ -1262,7 +1278,7 @@ body,
   white-space: nowrap;
   color: var(--accent);
   width: 1%;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: "D2Coding", "Cascadia Code", Consolas, monospace;
 }
 .settings-table td.keys kbd {
   background: var(--bg);

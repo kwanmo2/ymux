@@ -208,6 +208,21 @@ pub fn open_url(url: String) -> YmuxResult<()> {
     Ok(())
 }
 
+/// Open a directory in the OS file explorer. Validates that the path is an
+/// existing directory before handing it to `opener` so we can't be tricked
+/// into launching a file or arbitrary target.
+#[tauri::command]
+pub fn open_folder(path: String) -> YmuxResult<()> {
+    let p = std::path::Path::new(&path);
+    if !p.is_dir() {
+        return Err(YmuxError::Other(
+            "open_folder: path is not an existing directory".into(),
+        ));
+    }
+    opener::open(p).map_err(|e| YmuxError::Other(e.to_string()))?;
+    Ok(())
+}
+
 /// Start the reader thread that drains PTY output and forwards it to the
 /// frontend as Tauri events. Must be called once, at startup, after the
 /// [`AppState`] is installed.
