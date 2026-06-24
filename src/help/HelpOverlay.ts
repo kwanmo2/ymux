@@ -26,6 +26,7 @@ const SHORTCUTS: ShortcutEntry[] = [
   { keys: "Ctrl+Shift+E",   tKey: "shortcut.openInEditor" },
   { keys: "Ctrl+Shift+P",   tKey: "shortcut.palette" },
   { keys: "Ctrl+Alt+N",     tKey: "shortcut.notes" },
+  { keys: "Ctrl+C",         tKey: "shortcut.copy" },
   { keys: "Ctrl+V",         tKey: "shortcut.paste" },
   { keys: "Dbl-click WS", tKey: "shortcut.renameWs" },
   { keys: "?",              tKey: "shortcut.helpToggle" },

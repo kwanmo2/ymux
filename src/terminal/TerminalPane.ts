@@ -125,6 +125,16 @@ export class TerminalPane implements Pane {
       if (ev.type !== "keydown") return true;
       if (ev.ctrlKey && !ev.altKey) {
         const k = ev.key.toLowerCase();
+        // Ctrl+C → copy the active selection to the clipboard, but ONLY when
+        // something is selected. With no selection we fall through to xterm,
+        // which sends the interrupt byte (0x03) to the PTY — so running
+        // programs (codex, claude code, shells, …) can still be cancelled
+        // normally. This mirrors the Windows Terminal / VS Code behaviour.
+        if (!ev.shiftKey && k === "c" && this.term.hasSelection()) {
+          ev.preventDefault();
+          void this.copySelection();
+          return false;
+        }
         // Ctrl+V → paste clipboard text into the PTY instead of
         // letting xterm send the raw 0x16 byte.
         if (!ev.shiftKey && k === "v") {
@@ -450,6 +460,19 @@ export class TerminalPane implements Pane {
         this.term.scrollToLine(target);
       }
     });
+  }
+
+  private async copySelection(): Promise<void> {
+    const text = this.term.getSelection();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      // Clear the selection so the copy registers visually and a follow-up
+      // Ctrl+C (with nothing selected) sends the interrupt instead.
+      this.term.clearSelection();
+    } catch {
+      // Clipboard access denied — silent fail.
+    }
   }
 
   private async pasteClipboard(): Promise<void> {

@@ -140,6 +140,7 @@ y* tool (yMux UI, yCode syntax highlighting, etc.). Edit it with the
 | `Ctrl+Shift+E`              | Open working directory in VS Code    |
 | `Ctrl+Shift+P`              | Open command palette                 |
 | `Ctrl+Alt+N`                | Toggle notes for active workspace    |
+| `Ctrl+C`                    | Copy selection (interrupt if none)   |
 | `Ctrl+V`                    | Paste clipboard into terminal        |
 | `Ctrl+F`                    | Search terminal scrollback           |
 | `Ctrl+Tab`                  | Focus next pane                      |

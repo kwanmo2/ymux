@@ -136,6 +136,7 @@ Linux/macOS 에서 플랫폼 독립적인 로직을 작업할 수 있습니다. 
 | `Ctrl+Shift+E`                 | 작업 폴더를 VS Code로 열기          |
 | `Ctrl+Shift+P`                 | 커맨드 팔레트 열기                  |
 | `Ctrl+Alt+N`                   | 현재 워크스페이스 노트 토글         |
+| `Ctrl+C`                       | 선택 영역 복사 (없으면 인터럽트)    |
 | `Ctrl+V`                       | 클립보드를 터미널에 붙여넣기        |
 | `Ctrl+F`                       | 터미널 스크롤백 검색                |
 | `Ctrl+Tab`                     | 다음 pane으로 포커스 이동           |
